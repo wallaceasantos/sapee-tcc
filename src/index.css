@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+/* Dark mode via class no html */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  /* Cores padrão (light mode) */
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+  }
+  
+  /* Cores dark mode */
+  .dark {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --text-primary: #f9fafb;
+    --text-secondary: #94a3b8;
+  }
+  
+  body {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+}
