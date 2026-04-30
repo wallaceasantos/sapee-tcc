@@ -12,6 +12,6 @@ joblib
 pyjwt
 passlib[bcrypt]
 tabulate
-pydantic
+pydantic[email]
 alembic
 email-validator
