@@ -38,16 +38,27 @@ app = FastAPI(
 # ============================================
 # CORS (Cross-Origin Resource Sharing)
 # ============================================
+# CONFIGURAÇÃO DE CORS (Permitir Frontend)
+# ============================================
+import os
+
+# Define as origens permitidas (Locais + Railway)
+origens_permitidas = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "https://sapee-dewas.up.railway.app",  # SEU SITE NO RAILWAY
+    os.getenv("FRONTEND_URL", "")          # LÊ A VARIÁVEL DO RAILWAY SE EXISTIR
+]
+
+# Filtra strings vazias caso a variável não exista
+origens_permitidas = [url for url in origens_permitidas if url]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
-    ],  # Frontend URLs
+    allow_origins=origens_permitidas,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
