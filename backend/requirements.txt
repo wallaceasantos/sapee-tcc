@@ -9,9 +9,8 @@ pandas
 numpy
 scikit-learn
 joblib
-pyjwt
+python-jose[cryptography]
 passlib[bcrypt]
 tabulate
 pydantic[email]
-alembic
-email-validator
+requests
