@@ -15,3 +15,4 @@ tabulate
 pydantic[email]
 requests
 python-multipart
+bcrypt==4.0.1
