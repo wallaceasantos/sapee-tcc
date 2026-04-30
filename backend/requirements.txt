@@ -14,3 +14,4 @@ passlib[bcrypt]
 tabulate
 pydantic
 alembic
+email-validator
