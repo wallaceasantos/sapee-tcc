@@ -39,7 +39,7 @@ export default function IntervencaoModal({
   const [searching, setSearching] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<any>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout>(undefined);
 
   const [tipo, setTipo] = useState(initialValues?.tipo || '');
   const [descricao, setDescricao] = useState(initialValues?.descricao || '');
@@ -207,7 +207,7 @@ export default function IntervencaoModal({
 
               {/* Preview do Aluno Selecionado */}
               {alunoSelecionado && (
-                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-100 dark:border-blue-800 space-y-3">
+                <div className="p-4 bg-linear-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-100 dark:border-blue-800 space-y-3">
                   <div className="flex items-center gap-2 mb-2">
                     <User className="w-4 h-4 text-blue-600" />
                     <span className="font-bold text-gray-800 dark:text-white">{alunoSelecionado.nome}</span>

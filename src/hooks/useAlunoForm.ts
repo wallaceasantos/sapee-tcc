@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import api from '../services/api';
 import { NivelRisco } from '../types';
@@ -262,6 +263,7 @@ function calcularRiscoEvasao(dados: Partial<AlunoFormData>): {
 
 export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<AlunoFormData>(initialFormData);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -310,6 +312,24 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
     if (intFields.includes(name)) {
       const num = parseInt(value);
       setFormData(prev => ({ ...prev, [name]: isNaN(num) ? 0 : num }));
+      return;
+    }
+
+    // Sincronização Automática: Matrícula define o Ano de Ingresso
+    if (name === 'matricula') {
+      // Tenta encontrar um ano no início da matrícula (ex: 2024...)
+      const yearMatch = value.match(/^(\d{4})/);
+      let anoCalculado = formData.ano_ingresso;
+      
+      if (yearMatch) {
+        const ano = parseInt(yearMatch[1]);
+        // Validação básica de ano razoável (entre 1950 e 2100)
+        if (ano >= 1950 && ano <= 2100) {
+          anoCalculado = ano;
+        }
+      }
+      
+      setFormData(prev => ({ ...prev, matricula: value, ano_ingresso: anoCalculado }));
       return;
     }
 
@@ -422,7 +442,21 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
   }, []);
 
   // Setar dados para edição
+  // Handler específico para carregar dados de edição
   const setEditingData = useCallback((aluno: any) => {
+    // Lógica de Sincronização: A matrícula manda mais que o ano salvo
+    let anoFinal = aluno.ano_ingresso;
+    if (aluno.matricula) {
+      const yearMatch = String(aluno.matricula).match(/^(\d{4})/);
+      if (yearMatch) {
+        const anoMatricula = parseInt(yearMatch[1]);
+        // Se a matrícula tem um ano válido, usamos ele
+        if (anoMatricula >= 1950 && anoMatricula <= 2100) {
+          anoFinal = anoMatricula;
+        }
+      }
+    }
+
     setFormData({
       matricula: aluno.matricula || '',
       nome: aluno.nome || '',
@@ -438,7 +472,7 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
       frequencia: aluno.frequencia || 100,
       historico_reprovas: aluno.historico_reprovas || 0,
       coeficiente_rendimento: aluno.coeficiente_rendimento || 0,
-      ano_ingresso: aluno.ano_ingresso || new Date().getFullYear(),
+      ano_ingresso: anoFinal,
       cidade: aluno.cidade || '',
       cep: aluno.cep || '',
       logradouro: aluno.logradouro || '',
@@ -558,7 +592,11 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
         onSuccess();
       }
 
-      // Resetar formulário e fechar
+      // Otimização: Navegar sem recarregar a página e corrigir o histórico (Back button)
+      // Usamos 'replace: true' para que o botão "Voltar" não retorne ao formulário de edição
+      navigate('/alunos', { replace: true });
+
+      // Resetar formulário
       resetForm();
       
     } catch (error) {

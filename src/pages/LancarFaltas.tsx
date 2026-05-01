@@ -179,32 +179,32 @@ export default function LancarFaltas() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Lançar Faltas</h1>
-          <p className="text-gray-500 mt-1">Registre faltas diárias e acompanhe alertas</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Lançar Faltas</h1>
+          <p className="text-xs md:text-sm text-gray-500 mt-1">Registre faltas diárias e acompanhe alertas</p>
         </div>
         <button
           onClick={() => navigate('/faltas/alertas')}
-          className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-xl font-bold hover:bg-orange-200 transition-all"
+          className="flex items-center gap-2 px-3 md:px-4 py-2.5 bg-orange-100 text-orange-700 rounded-xl font-bold hover:bg-orange-200 transition-all text-sm md:text-base min-h-11"
         >
-          <AlertTriangle className="w-5 h-5" />
-          Ver Alertas
+          <AlertTriangle className="w-4 h-4 md:w-5 md:h-5" />
+          <span className="truncate">Ver Alertas</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Formulário */}
         <div className="lg:col-span-2">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6"
           >
-            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
+            <h2 className="text-base md:text-xl font-bold text-gray-800 mb-4 md:mb-6 flex items-center gap-2">
+              <Calendar className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
               Nova Falta
             </h2>
 
@@ -362,7 +362,7 @@ export default function LancarFaltas() {
               )}
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
@@ -372,14 +372,14 @@ export default function LancarFaltas() {
                     setAlunoSelecionado(null);
                     setBusca('');
                   }}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-all"
+                  className="flex-1 py-3 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-all min-h-11"
                 >
                   Limpar
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex-1 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-11"
                 >
                   {isSaving ? (
                     <>
@@ -399,15 +399,15 @@ export default function LancarFaltas() {
         </div>
 
         {/* Informações */}
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {/* Níveis de Alerta */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6"
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6"
           >
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-600" />
+            <h3 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-3 md:mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-orange-600" />
               Níveis de Alerta
             </h3>
 

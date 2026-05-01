@@ -136,27 +136,27 @@ export default function AlertasFaltas() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Alertas de Faltas</h1>
-          <p className="text-gray-500 mt-1">Gerencie alertas de faltas consecutivas</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Alertas de Faltas</h1>
+          <p className="text-xs md:text-sm text-gray-500 mt-1">Gerencie alertas de faltas consecutivas</p>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4">
-        <div className="flex items-center gap-4">
-          <Filter className="w-5 h-5 text-gray-400" />
-          
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-3 md:p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Filter className="w-4 h-4 md:w-5 md:h-5 text-gray-400 shrink-0" />
+
           <select
             value={filtroStatus}
             onChange={(e) => {
               setFiltroStatus(e.target.value);
               setTimeout(loadAlertas, 300);
             }}
-            className="px-4 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+            className="px-3 md:px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs md:text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none min-h-11 w-full sm:w-auto"
           >
             <option value="" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">Todos Status</option>
             <option value="PENDENTE" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">Pendentes</option>
@@ -171,7 +171,7 @@ export default function AlertasFaltas() {
               setFiltroTipo(e.target.value);
               setTimeout(loadAlertas, 300);
             }}
-            className="px-4 py-2 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+            className="px-3 md:px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-xs md:text-sm font-medium text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none min-h-11 w-full sm:w-auto"
           >
             <option value="" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">Todos Tipos</option>
             <option value="3_FALTAS" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">3 Faltas</option>
@@ -211,14 +211,14 @@ export default function AlertasFaltas() {
               >
                 {/* Header do Card */}
                 <div className={cn(
-                  "p-4 flex items-center justify-between",
+                  "p-3 md:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3",
                   tipoConfig.color
                 )}>
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-6 h-6" />
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-gray-900">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-bold text-gray-900 text-sm md:text-base truncate">
                           {alerta.aluno?.nome || alerta.aluno_matricula}
                         </h3>
                         <span className={cn(
@@ -228,24 +228,24 @@ export default function AlertasFaltas() {
                           {statusConfig[alerta.status].label}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs md:text-sm text-gray-600 truncate">
                         {alerta.aluno?.curso?.nome || 'Curso não informado'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 sm:shrink-0">
                     <div className="text-right">
-                      <p className="text-2xl font-bold">{alerta.quantidade_faltas}</p>
-                      <p className="text-xs text-gray-600">faltas</p>
+                      <p className="text-xl md:text-2xl font-bold">{alerta.quantidade_faltas}</p>
+                      <p className="text-[10px] md:text-xs text-gray-600">faltas</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Corpo do Card */}
-                <div className="p-4 space-y-4">
+                <div className="p-3 md:p-4 space-y-4">
                   {/* Informações */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                     <div>
                       <p className="text-xs text-gray-500 font-medium mb-1">Período</p>
                       <p className="text-sm font-medium text-gray-800">
@@ -317,17 +317,17 @@ export default function AlertasFaltas() {
 
                   {/* Botões de Ação */}
                   {alerta.status === 'PENDENTE' && alertaEditando !== alerta.id && (
-                    <div className="flex gap-2 pt-4 border-t">
+                    <div className="flex flex-wrap gap-2 pt-4 border-t">
                       <button
                         onClick={() => setAlertaEditando(alerta.id)}
-                        className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold hover:bg-blue-100 transition-all text-sm flex items-center justify-center gap-2"
+                        className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-50 text-blue-600 rounded-lg font-bold hover:bg-blue-100 transition-all text-xs md:text-sm flex items-center justify-center gap-2 min-h-11"
                       >
                         <Edit className="w-4 h-4" />
                         Registrar Ações
                       </button>
                       <button
                         onClick={() => handleAtualizarStatus(alerta.id, 'IGNORADO')}
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg font-bold hover:bg-red-100 transition-all text-sm flex items-center gap-2"
+                        className="px-4 py-2.5 bg-red-50 text-red-600 rounded-lg font-bold hover:bg-red-100 transition-all text-xs md:text-sm flex items-center gap-2 min-h-11"
                       >
                         <XCircle className="w-4 h-4" />
                         Ignorar

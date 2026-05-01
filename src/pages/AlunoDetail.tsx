@@ -113,6 +113,9 @@ export default function AlunoDetail() {
 
   // Carregar dados do aluno
   useEffect(() => {
+    // Rola a página para o topo ao entrar nos detalhes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
     const loadAluno = async () => {
       if (!matricula) {
         setError('Matrícula não fornecida');

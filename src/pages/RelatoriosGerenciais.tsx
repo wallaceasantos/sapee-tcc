@@ -152,12 +152,12 @@ export default function RelatoriosGerenciais() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Relatórios Gerenciais</h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1">Gere e exporte relatórios do sistema</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Relatórios Gerenciais</h1>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400 mt-1">Gere e exporte relatórios do sistema</p>
         </div>
       </div>
 
@@ -165,14 +165,14 @@ export default function RelatoriosGerenciais() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6"
+        className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6"
       >
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white">Filtros do Relatório</h2>
+        <div className="flex items-center gap-2 mb-3 md:mb-4">
+          <Filter className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+          <h2 className="text-base md:text-lg font-bold text-gray-800 dark:text-white">Filtros do Relatório</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
           <div>
             <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">Tipo de Relatório</label>
             <select
@@ -224,12 +224,12 @@ export default function RelatoriosGerenciais() {
         </div>
 
         {dadosRelatorio && (
-          <div className="flex gap-3 pt-4 border-t dark:border-slate-700">
-            <button onClick={handleExportPDF} className="flex-1 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-all flex items-center justify-center gap-2">
-              <FileText className="w-5 h-5" /> Exportar PDF
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t dark:border-slate-700">
+            <button onClick={handleExportPDF} className="flex-1 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-all flex items-center justify-center gap-2 min-h-11">
+              <FileText className="w-4 h-4 md:w-5 md:h-5" /> Exportar PDF
             </button>
-            <button onClick={handleExportExcel} className="flex-1 py-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-all flex items-center justify-center gap-2">
-              <Download className="w-5 h-5" /> Exportar Excel
+            <button onClick={handleExportExcel} className="flex-1 py-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-all flex items-center justify-center gap-2 min-h-11">
+              <Download className="w-4 h-4 md:w-5 md:h-5" /> Exportar Excel
             </button>
           </div>
         )}
@@ -245,9 +245,9 @@ export default function RelatoriosGerenciais() {
 
       {/* Conteúdo do Relatório */}
       {!isLoading && relatorio && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 md:space-y-6">
           {/* Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             <StatCard title="Total de Alunos" value={relatorio.resumo.total_alunos} icon={Users} color="blue" />
             <StatCard title="Alunos em Risco Alto" value={relatorio.resumo.risco_alto} icon={AlertTriangle} color="red" trend={`${relatorio.indicadores.percentual_risco_alto}% do total`} />
             <StatCard title="Intervenções Concluídas" value={relatorio.resumo.intervencoes_concluidas} icon={CheckCircle} color="green" trend={`${relatorio.indicadores.taxa_conclusao_intervencao}% de conclusão`} />

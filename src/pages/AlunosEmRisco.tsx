@@ -310,34 +310,34 @@ export default function AlunosEmRisco() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
+            <AlertTriangle className="w-6 h-6 md:w-8 md:h-8 text-red-500" />
             Alunos que Precisam de Atenção
           </h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1">
-            Alunos com risco ALTO/MUITO_ALTO sem intervenção ativa nas últimas 4 semanas
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+            Alunos com risco ALTO/MUITO_ALTO sem intervenção ativa
           </p>
         </div>
       </div>
 
       {/* Seção de Sugestões Pendentes */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-400 shadow-lg overflow-hidden">
-        <div className="bg-linear-to-r from-amber-500 to-orange-500 p-4 flex items-center justify-between">
+        <div className="bg-linear-to-r from-amber-500 to-orange-500 p-3 md:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3 text-white">
-            <Bot className="w-6 h-6" />
+            <Bot className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
             <div>
-              <h2 className="text-lg font-bold">⚡ Sugestões Pendentes ({rascunhos.length})</h2>
+              <h2 className="text-base md:text-lg font-bold">⚡ Sugestões Pendentes ({rascunhos.length})</h2>
               <p className="text-amber-100 text-xs">O sistema gerou estas sugestões com base no risco dos alunos</p>
             </div>
           </div>
           <button
             onClick={handleGerarSugestoes}
             disabled={gerandoRascunhos}
-            className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-3 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-11 w-full sm:w-auto"
           >
             {gerandoRascunhos ? 'Gerando...' : '✨ Gerar Novas'}
           </button>
@@ -389,26 +389,26 @@ export default function AlunosEmRisco() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 sm:shrink-0 pl-6 sm:pl-0">
-                    <button
-                      onClick={() => handleAprovarRascunho(r.id)}
-                      className="flex items-center gap-1 px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors"
-                    >
-                      <Check className="w-4 h-4" /> Aprovar
-                    </button>
-                    <button
-                      onClick={() => handleEditarRascunho(r)}
-                      className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
-                    >
-                      <Edit className="w-4 h-4" /> Editar
-                    </button>
-                    <button
-                      onClick={() => handleRejeitarRascunho(r.id)}
-                      className="flex items-center gap-1 px-3 py-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 transition-colors"
-                    >
-                      <X className="w-4 h-4" /> Rejeitar
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2 sm:shrink-0 pl-6 sm:pl-0 flex-wrap">
+                  <button
+                    onClick={() => handleAprovarRascunho(r.id)}
+                    className="flex items-center justify-center gap-1 px-3 py-2.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors min-h-11 flex-1 sm:flex-none"
+                  >
+                    <Check className="w-4 h-4" /> Aprovar
+                  </button>
+                  <button
+                    onClick={() => handleEditarRascunho(r)}
+                    className="flex items-center justify-center gap-1 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors min-h-11 flex-1 sm:flex-none"
+                  >
+                    <Edit className="w-4 h-4" /> Editar
+                  </button>
+                  <button
+                    onClick={() => handleRejeitarRascunho(r.id)}
+                    className="flex items-center justify-center gap-1 px-3 py-2.5 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 transition-colors min-h-11 flex-1 sm:flex-none"
+                  >
+                    <X className="w-4 h-4" /> Rejeitar
+                  </button>
+                </div>
                 </div>
               );
             })}
@@ -417,13 +417,13 @@ export default function AlunosEmRisco() {
       </div>
 
       {/* Stats Card - Alunos sem intervenção */}
-      <div className="bg-linear-to-r from-red-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
+      <div className="bg-linear-to-r from-red-500 to-orange-500 rounded-2xl p-4 md:p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-red-100 text-sm font-medium">Alunos sem intervenção ativa</p>
-            <p className="text-4xl font-bold mt-1">{filteredAlunos.length}</p>
+            <p className="text-red-100 text-xs md:text-sm font-medium">Alunos sem intervenção ativa</p>
+            <p className="text-3xl md:text-4xl font-bold mt-1">{filteredAlunos.length}</p>
           </div>
-          <AlertTriangle className="w-16 h-16 text-white/20" />
+          <AlertTriangle className="w-12 h-12 md:w-16 md:h-16 text-white/20" />
         </div>
       </div>
 
@@ -432,7 +432,7 @@ export default function AlunosEmRisco() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           type="text"
-          className="w-full px-4 py-3 pl-10 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all text-gray-800 dark:text-white"
+          className="w-full px-4 py-3 pl-10 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all text-gray-800 dark:text-white min-h-12"
           placeholder="Buscar aluno por nome ou matrícula..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -454,7 +454,7 @@ export default function AlunosEmRisco() {
           <p className="text-gray-500 dark:text-slate-400 mt-2">Não há alunos sem intervenção ativa no momento.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredAlunos.map((aluno) => (
             <motion.div
               key={aluno.matricula}
@@ -467,52 +467,52 @@ export default function AlunosEmRisco() {
             >
               {/* Header do Card */}
               <div className={cn(
-                "p-4 text-white shrink-0",
+                "p-3 md:p-4 text-white shrink-0",
                 aluno.nivel_risco === 'MUITO_ALTO' ? "bg-linear-to-r from-purple-600 to-purple-700" : "bg-linear-to-r from-red-600 to-red-700"
               )}>
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-lg truncate">{aluno.nome}</h3>
-                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold shrink-0">
+                  <h3 className="font-bold text-base md:text-lg truncate">{aluno.nome}</h3>
+                  <span className="bg-white/20 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-bold shrink-0">
                     {aluno.risco_evasao}%
                   </span>
                 </div>
-                <p className="text-white/80 text-sm">{aluno.matricula}</p>
+                <p className="text-white/80 text-xs md:text-sm">{aluno.matricula}</p>
               </div>
 
               {/* Conteúdo do Card */}
-              <div className="p-4 space-y-3 flex-1 flex flex-col">
-                <div className="grid grid-cols-2 gap-3 text-sm shrink-0">
+              <div className="p-3 md:p-4 space-y-3 flex-1 flex flex-col">
+                <div className="grid grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm shrink-0">
                   <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-gray-400 shrink-0" />
+                    <BookOpen className="w-3 h-3 md:w-4 md:h-4 text-gray-400 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Curso</p>
-                      <p className="font-medium text-gray-800 dark:text-white text-xs truncate">{aluno.curso}</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Curso</p>
+                      <p className="font-medium text-gray-800 dark:text-white text-[10px] md:text-xs truncate">{aluno.curso}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gray-400 shrink-0" />
+                    <Clock className="w-3 h-3 md:w-4 md:h-4 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Período</p>
-                      <p className="font-medium text-gray-800 dark:text-white">{aluno.periodo}º</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Período</p>
+                      <p className="font-medium text-gray-800 dark:text-white text-[10px] md:text-xs">{aluno.periodo}º</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-gray-400 shrink-0" />
+                    <BarChart3 className="w-3 h-3 md:w-4 md:h-4 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Média</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Média</p>
                       <p className={cn(
-                        "font-bold",
+                        "font-bold text-[10px] md:text-xs",
                         aluno.media_geral >= 7 ? "text-emerald-600" :
                         aluno.media_geral >= 5 ? "text-amber-600" : "text-red-500"
                       )}>{aluno.media_geral}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-400 shrink-0" />
+                    <User className="w-3 h-3 md:w-4 md:h-4 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Freq</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Freq</p>
                       <p className={cn(
-                        "font-bold",
+                        "font-bold text-[10px] md:text-xs",
                         aluno.frequencia >= 85 ? "text-emerald-600" :
                         aluno.frequencia >= 75 ? "text-amber-600" : "text-red-500"
                       )}>{aluno.frequencia}%</p>
@@ -580,7 +580,7 @@ export default function AlunosEmRisco() {
                 {/* Botão Criar Intervenção */}
                 <button
                   onClick={() => handleCriarIntervencao(aluno)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/20 mt-auto shrink-0"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/20 mt-auto shrink-0 min-h-12"
                 >
                   <Plus className="w-5 h-5" />
                   Criar Intervenção
@@ -676,18 +676,18 @@ export default function AlunosEmRisco() {
 
       {/* Seção Única: Acompanhamento de Intervenções Ativas */}
       {alunosComIntervencao.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden mt-8">
-          <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden mt-4 md:mt-8">
+          <div className="p-4 md:p-6 border-b border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-900/20">
             <div className="flex items-center gap-3">
-              <CheckCircle className="w-6 h-6 text-emerald-600" />
+              <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-emerald-600 shrink-0" />
               <div>
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white">Acompanhamento de Intervenções ({alunosComIntervencao.length})</h2>
-                <p className="text-sm text-gray-500 dark:text-slate-400">Alunos que já receberam intervenção e estão sendo acompanhados (Ciclo de 6 meses)</p>
+                <h2 className="text-base md:text-lg font-bold text-gray-800 dark:text-white">Acompanhamento de Intervenções ({alunosComIntervencao.length})</h2>
+                <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Alunos que já receberam intervenção e estão sendo acompanhados (Ciclo de 6 meses)</p>
               </div>
             </div>
             <Link
               to="/intervencoes"
-              className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+              className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium min-h-11 justify-center"
             >
               Ver todas no Histórico <ExternalLink className="w-4 h-4" />
             </Link>
@@ -721,19 +721,19 @@ export default function AlunosEmRisco() {
               const tags = getRiscoTags(aluno);
 
               return (
-              <div key={int.id} className="p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors border-b border-gray-50 dark:border-slate-800 last:border-0">
+              <div key={int.id} className="p-4 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                 {/* Linha principal */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-4 flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3 mb-2">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className={cn(
-                      "w-2 h-10 rounded-full",
+                      "w-1 h-10 md:h-12 rounded-full shrink-0",
                       int.prioridade === 'URGENTE' ? "bg-red-500" :
                       int.prioridade === 'ALTA' ? "bg-orange-500" :
                       int.prioridade === 'MEDIA' ? "bg-blue-500" : "bg-green-500"
                     )} />
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-gray-800 dark:text-white">{int.tipo}</h3>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="font-bold text-gray-800 dark:text-white text-sm md:text-base">{int.tipo}</h3>
                         {scoreInicial && (
                           <span className={cn(
                             "px-2 py-0.5 rounded-full text-xs font-bold text-white",
@@ -743,13 +743,22 @@ export default function AlunosEmRisco() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-medium text-gray-700 dark:text-slate-300 truncate max-w-50 sm:max-w-none">
+                      <p className="text-sm font-medium text-gray-700 dark:text-slate-300 truncate">
                         {int.aluno?.nome || int.aluno_id}
                       </p>
-                      
+                      <span className={cn(
+                        "inline-block px-2 py-1 rounded-full text-xs font-bold mt-1",
+                        int.status === 'PENDENTE' ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" :
+                        int.status === 'EM_ANDAMENTO' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" :
+                        int.status === 'CONCLUIDA' ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" :
+                        "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400"
+                      )}>
+                        {int.status?.replace('_', ' ')}
+                      </span>
+
                       {/* Tags de Fatores de Risco */}
                       {tags.length > 0 && (
-                        <div className="flex items-center gap-1.5 mt-1 overflow-x-auto pb-1">
+                        <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
                           {tags.slice(0, 3).map((tag, i) => (
                             <span key={i} className="px-1.5 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded text-[10px] font-medium whitespace-nowrap border border-gray-200 dark:border-slate-600">
                               {tag}
@@ -761,44 +770,35 @@ export default function AlunosEmRisco() {
                         </div>
                       )}
                     </div>
-                    <span className={cn(
-                      "px-2 py-1 rounded-full text-xs font-bold",
-                      int.status === 'PENDENTE' ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" :
-                      int.status === 'EM_ANDAMENTO' ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" :
-                      int.status === 'CONCLUIDA' ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" :
-                      "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400"
-                    )}>
-                      {int.status?.replace('_', ' ')}
-                    </span>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right pl-4 sm:pl-0">
                     <p className="text-xs text-gray-500 dark:text-slate-400">
-                      {int.criado_at ? new Date(int.criado_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                      {int.criado_at ? new Date(int.criado_at).toLocaleDateString('pt-BR') : ''}
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Observação existente */}
                 {int.observacoes && (
-                  <div className="ml-6 mt-2 p-2 bg-gray-50 dark:bg-slate-700 rounded text-xs text-gray-600 dark:text-slate-300 border-l-2 border-blue-400">
+                  <div className="mt-2 p-2 bg-gray-50 dark:bg-slate-700 rounded text-xs text-gray-600 dark:text-slate-300 border-l-2 border-blue-400">
                     📝 {int.observacoes}
                   </div>
                 )}
 
                 {/* Indicador de Ciclo e Prazo (6 meses) */}
                 {int.data_limite && (
-                  <div className="ml-6 mt-2">
+                  <div className="mt-2">
                     {(() => {
                       const hoje = new Date();
                       const limite = new Date(int.data_limite);
                       const inicio = new Date(int.criado_at || int.data_intervencao);
                       const diffDias = (limite.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
                       const mesesPassados = Math.max(0, Math.floor((hoje.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24 * 30)));
-                      
+
                       let cor = "text-green-600 dark:text-green-400";
                       let icone = "🟢";
                       let texto = "No prazo";
-                      
+
                       if (diffDias < 30) {
                         cor = "text-red-600 dark:text-red-400";
                         icone = "🔴";
@@ -808,7 +808,7 @@ export default function AlunosEmRisco() {
                         icone = "🟡";
                         texto = "Atenção";
                       }
-                      
+
                       return (
                         <div className={cn("text-xs font-medium flex items-center gap-2 flex-wrap", cor)}>
                           <span>{icone} {texto}</span>
@@ -819,19 +819,19 @@ export default function AlunosEmRisco() {
                     })()}
                   </div>
                 )}
-                
+
                 {/* Ações rápidas */}
-                <div className="ml-6 mt-2 flex items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => handleAtualizarStatus(int)}
-                    className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    className="text-xs px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium min-h-11 flex items-center justify-center"
                   >
                     ✏️ Atualizar Status
                   </button>
                   {int.status === 'PENDENTE' && (
                     <button
                       onClick={() => handleMudarStatusIntervencao(int.id, 'EM_ANDAMENTO')}
-                      className="text-xs px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium"
+                      className="text-xs px-3 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium min-h-11 flex items-center justify-center"
                     >
                       ▶️ Iniciar
                     </button>
@@ -839,14 +839,14 @@ export default function AlunosEmRisco() {
                   {int.status === 'EM_ANDAMENTO' && (
                     <button
                       onClick={() => handleMudarStatusIntervencao(int.id, 'CONCLUIDA')}
-                      className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                      className="text-xs px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium min-h-11 flex items-center justify-center"
                     >
                       ✅ Concluir
                     </button>
                   )}
                   <button
                     onClick={() => handleExcluirIntervencao(int.id)}
-                    className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                    className="text-xs px-3 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium min-h-11 flex items-center justify-center"
                   >
                     🗑️ Excluir
                   </button>

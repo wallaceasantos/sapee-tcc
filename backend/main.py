@@ -915,13 +915,31 @@ def get_aluno(
         )
 
     # Converter para dict e adicionar predicao_atual
+    
+    # Calcular idade automaticamente se estiver vazia
+    idade_final = aluno.idade
+    if not idade_final and aluno.data_nascimento:
+        from datetime import date
+        hoje = date.today()
+        # Se for objeto datetime.date
+        if hasattr(aluno.data_nascimento, 'year'):
+            idade_final = hoje.year - aluno.data_nascimento.year - ((hoje.month, hoje.day) < (aluno.data_nascimento.month, aluno.data_nascimento.day))
+        # Se for string (fallback)
+        elif isinstance(aluno.data_nascimento, str):
+            try:
+                from datetime import datetime
+                nasc = datetime.strptime(aluno.data_nascimento, '%Y-%m-%d').date()
+                idade_final = hoje.year - nasc.year - ((hoje.month, hoje.day) < (nasc.month, nasc.day))
+            except:
+                pass
+
     aluno_dict = {
         'matricula': aluno.matricula,
         'nome': aluno.nome,
         'email': aluno.email,
         'telefone': aluno.telefone,
         'data_nascimento': aluno.data_nascimento,
-        'idade': aluno.idade,
+        'idade': idade_final,
         'sexo': aluno.sexo,
         'curso_id': aluno.curso_id,
         'curso': aluno.curso,

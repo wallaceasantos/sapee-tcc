@@ -106,14 +106,14 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 bg-gray-50 dark:bg-slate-950 min-h-screen">
-      <header className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard SAPEE</h2>
-        <p className="text-gray-600 dark:text-slate-400 mt-1">Visão geral do alerta de evasão escolar no campus.</p>
+    <div className="p-4 md:p-6 space-y-6 md:space-y-8 bg-gray-50 dark:bg-slate-950 min-h-screen">
+      <header className="mb-4 md:mb-6">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Dashboard SAPEE</h2>
+        <p className="text-xs md:text-sm text-gray-600 dark:text-slate-400 mt-1">Visão geral do alerta de evasão escolar no campus.</p>
       </header>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
         <StatCard
           title="Total de Alunos"
           value={stats?.total_alunos || 0}
@@ -157,22 +157,22 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800"
+          className="bg-white dark:bg-slate-900 rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 dark:border-slate-800"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Award className="w-6 h-6 text-emerald-600" />
-              Eficácia das Intervenções
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h3 className="text-base md:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Award className="w-5 h-5 md:w-6 md:h-6 text-emerald-600" />
+              <span className="truncate">Eficácia das Intervenções</span>
             </h3>
             <Link
               to="/relatorio-eficacia"
-              className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+              className="text-xs md:text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
             >
-              Ver relatório completo <ArrowRight className="w-4 h-4" />
+              Ver relatório completo <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <StatCard
               title="Intervenções Ativas"
               value={eficaciaStats.ativas || 0}
@@ -211,22 +211,22 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800"
+          className="bg-white dark:bg-slate-900 rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 dark:border-slate-800"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <AlertTriangle className="w-6 h-6 text-orange-600" />
-              Faltas Consecutivas
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h3 className="text-base md:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
+              <span className="truncate">Faltas Consecutivas</span>
             </h3>
             <Link
               to="/faltas/alertas"
-              className="text-sm font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 flex items-center gap-1"
+              className="text-xs md:text-sm font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 flex items-center gap-1"
             >
-              Ver alertas <ArrowRight className="w-4 h-4" />
+              Ver alertas <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <StatCard
               title="Alertas Pendentes"
               value={faltasStats.total_alertas_pendentes || 0}
@@ -260,14 +260,14 @@ export default function Dashboard() {
       )}
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
         {/* Pie Chart - Distribuição de Risco */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800"
+          className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800"
         >
-          <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">📊 Distribuição de Risco</h3>
+          <h3 className="text-sm md:text-lg font-semibold mb-4 md:mb-6 text-gray-900 dark:text-white">📊 Distribuição de Risco</h3>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -300,9 +300,9 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800"
+          className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800"
         >
-          <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">📚 Risco por Curso</h3>
+          <h3 className="text-sm md:text-lg font-semibold mb-4 md:mb-6 text-gray-900 dark:text-white">📚 Risco por Curso</h3>
           {riscoPorCurso.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={riscoPorCurso}>
@@ -331,10 +331,10 @@ export default function Dashboard() {
         transition={{ delay: 0.2 }}
         className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden"
       >
-        <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">⚠️ Top 5 Alunos em Risco Crítico</h3>
-          <Link to="/alunos?nivelRisco=ALTO" className="text-blue-600 text-sm font-medium hover:underline flex items-center gap-1">
-            Ver todos <ArrowRight className="w-4 h-4" />
+        <div className="p-4 md:p-6 border-b border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="text-sm md:text-lg font-semibold text-gray-900 dark:text-white truncate">⚠️ Top 5 Alunos em Risco Crítico</h3>
+          <Link to="/alunos?nivelRisco=ALTO" className="text-blue-600 text-xs md:text-sm font-medium hover:underline flex items-center gap-1 shrink-0">
+            Ver todos <ArrowRight className="w-3 h-3 md:w-4 md:h-4" />
           </Link>
         </div>
         {topAlunosRisco.length > 0 ? (

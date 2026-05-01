@@ -820,26 +820,21 @@ function FormModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2 flex items-center gap-2">
                     Ano de Ingresso
+                    <span className="text-xs text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">Automático</span>
                   </label>
                   <input
                     type="text"
                     name="ano_ingresso"
                     value={formData.ano_ingresso}
-                    onChange={handleInputChange}
-                    onFocus={(e) => e.target.select()}
-                    min={new Date().getFullYear() - 70}
-                    max={new Date().getFullYear() + 1}
-                    placeholder={new Date().getFullYear().toString()}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700
-                               rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all
-                               text-gray-900 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    readOnly
+                    className="w-full px-4 py-3 bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600
+                               rounded-xl text-gray-500 dark:text-slate-400 cursor-not-allowed font-mono"
                     inputMode="numeric"
-                    pattern="[0-9]*"
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
-                    Ano entre {new Date().getFullYear() - 70} e {new Date().getFullYear() + 1}
+                    Este campo é sincronizado automaticamente com a Matrícula.
                   </p>
                 </div>
 

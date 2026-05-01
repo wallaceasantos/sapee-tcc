@@ -309,16 +309,16 @@ export default function RelatorioEficacia() {
   }
 
   return (
-    <div className="p-6 space-y-8" ref={reportRef} id="relatorio-eficacia-content">
+    <div className="p-4 md:p-6 space-y-6 md:space-y-8" ref={reportRef} id="relatorio-eficacia-content">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Relatórios de Eficácia</h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1">Acompanhe o impacto das intervenções pedagógicas</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Relatórios de Eficácia</h1>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400 mt-1">Acompanhe o impacto das intervenções pedagógicas</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           {/* Filtro de Período */}
-          <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl">
+          <div className="flex items-center gap-1 md:gap-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl w-full sm:w-auto">
             <button
               onClick={() => setPeriodo('6m')}
               className={cn(
@@ -423,12 +423,12 @@ export default function RelatorioEficacia() {
 
       {/* Stats de Eficácia */}
       <div>
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-          <TrendingUp className="w-6 h-6 text-blue-600" />
+        <h2 className="text-lg md:text-xl font-bold text-gray-800 dark:text-white mb-3 md:mb-4 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
           Eficácia das Intervenções
         </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {statsCards.map((stat, index) => (
             <motion.div
               key={stat.title}
@@ -436,7 +436,7 @@ export default function RelatorioEficacia() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               className={cn(
-                "rounded-2xl p-6",
+                "rounded-2xl p-4 md:p-6",
                 stat.bgColor,
                 "border border-gray-100 dark:border-slate-700"
               )}
@@ -459,10 +459,10 @@ export default function RelatorioEficacia() {
       </div>
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Top Tipos de Intervenção */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Top Tipos de Intervenção</h3>
+        <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+          <h3 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 md:mb-6">Top Tipos de Intervenção</h3>
           {tiposChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={tiposChartData}>
@@ -498,8 +498,8 @@ export default function RelatorioEficacia() {
         </div>
 
         {/* Distribuição por Prioridade */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Distribuição por Prioridade</h3>
+        <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+          <h3 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 md:mb-6">Distribuição por Prioridade</h3>
           {prioridadeChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -533,12 +533,12 @@ export default function RelatorioEficacia() {
 
       {/* Stats de Recuperação */}
       <div>
-        <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-          <Award className="w-6 h-6 text-emerald-600" />
-          Alunos Recuperados
+        <h2 className="text-lg md:text-xl font-bold text-gray-800 dark:text-white mb-3 md:mb-4 flex items-center gap-2">
+          <Award className="w-5 h-5 md:w-6 md:h-6 text-emerald-600" />
+          <span className="truncate">Alunos Recuperados</span>
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {recuperacaoCards.map((stat, index) => (
             <motion.div
               key={stat.title}
@@ -546,7 +546,7 @@ export default function RelatorioEficacia() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               className={cn(
-                "rounded-2xl p-6",
+                "rounded-2xl p-4 md:p-6",
                 stat.bgColor,
                 "border border-gray-100 dark:border-slate-700"
               )}

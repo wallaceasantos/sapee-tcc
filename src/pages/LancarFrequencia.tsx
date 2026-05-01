@@ -237,25 +237,27 @@ export default function LancarFrequencia() {
   }
   
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <header>
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-          📊 Lançamento de Frequência Mensal
-        </h2>
-        <p className="text-gray-500 dark:text-slate-400">
-          Registre a frequência mensal dos alunos
-        </p>
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white">
+            📊 Lançamento de Frequência Mensal
+          </h2>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">
+            Registre a frequência mensal dos alunos
+          </p>
+        </div>
       </header>
-      
+
       {/* Configurações do Mês */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-gray-200 dark:border-slate-800">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-emerald-600" />
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 md:p-6 border border-gray-200 dark:border-slate-800">
+        <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white mb-3 md:mb-4 flex items-center gap-2">
+          <Calendar className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
           Período de Referência
         </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
               Mês
@@ -403,15 +405,15 @@ export default function LancarFrequencia() {
       {/* Alunos Selecionados */}
       {alunosSelecionados.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-gray-200 dark:border-slate-800">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-emerald-600" />
-              Alunos Selecionados ({alunosSelecionados.length})
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
+              <span className="truncate">Alunos Selecionados ({alunosSelecionados.length})</span>
             </h3>
-            
+
             <button
               onClick={() => setAlunosSelecionados([])}
-              className="text-sm text-red-600 hover:text-red-700 font-semibold"
+              className="text-xs md:text-sm text-red-600 hover:text-red-700 font-semibold"
             >
               Limpar seleção
             </button>
@@ -499,11 +501,11 @@ export default function LancarFrequencia() {
           </div>
           
           {/* Botão Salvar */}
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex flex-col sm:flex-row justify-end">
             <button
               onClick={salvarFrequencia}
               disabled={isSaving}
-              className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 md:px-8 py-3 md:py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-11 w-full sm:w-auto"
             >
               {isSaving ? (
                 <>

@@ -16,9 +16,13 @@ interface OnboardingTourProps {
 
 export default function OnboardingTour({ steps, isRunning, onFinish, onClose }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const [skipNextTime, setSkipNextTime] = useState(false);
 
   useEffect(() => {
-    if (!isRunning) setCurrentStep(0);
+    if (!isRunning) {
+        setCurrentStep(0);
+        setSkipNextTime(false);
+    }
   }, [isRunning]);
 
   if (!isRunning || steps.length === 0) return null;
@@ -26,43 +30,72 @@ export default function OnboardingTour({ steps, isRunning, onFinish, onClose }: 
   const step = steps[currentStep];
   const isLast = currentStep === steps.length - 1;
 
+  const handleFinish = () => {
+    if (skipNextTime) {
+        localStorage.setItem('sapee_skip_tour', 'true');
+    }
+    onFinish();
+  };
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-100 flex items-center justify-center p-3 sm:p-4">
         <motion.div
           key={currentStep}
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden"
+          className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden mx-2"
         >
-          <div className="h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }} />
+          <div className="h-2 bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500" style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }} />
           
-          <div className="p-8">
-            <div className="flex items-center justify-between mb-6">
+          <div className="p-5 sm:p-8">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
               <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-full">
                 Passo {currentStep + 1}/{steps.length}
               </span>
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 min-w-11 min-h-11 flex items-center justify-center">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">{step.title}</h2>
-            <p className="text-gray-600 dark:text-slate-300 mb-8 text-lg leading-relaxed whitespace-pre-line">{step.text}</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">{step.title}</h2>
+            <p className="text-gray-600 dark:text-slate-300 mb-4 sm:mb-6 text-base sm:text-lg leading-relaxed whitespace-pre-line">{step.text}</p>
             
-            <div className="flex items-center justify-between">
+            {/* Checkbox na última etapa */}
+            {isLast && (
+                <div className="mb-4 sm:mb-6 p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center gap-3">
+                    <input 
+                        type="checkbox" 
+                        id="skip-tour" 
+                        checked={skipNextTime} 
+                        onChange={(e) => setSkipNextTime(e.target.checked)}
+                        className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0"
+                    />
+                    <label htmlFor="skip-tour" className="text-sm text-gray-700 dark:text-slate-300 cursor-pointer select-none">
+                        Não mostrar esta mensagem novamente
+                    </label>
+                </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2">
               <button
                 onClick={() => setCurrentStep(prev => prev - 1)}
                 disabled={currentStep === 0}
-                className="p-2 text-gray-500 disabled:opacity-30 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                className="p-3 text-gray-500 disabled:opacity-30 hover:text-gray-700 dark:hover:text-gray-300 transition-colors min-w-11 min-h-11 flex items-center justify-center"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
               
               <button
-                onClick={() => isLast ? onFinish() : setCurrentStep(prev => prev + 1)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
+                onClick={() => {
+                  if (isLast) {
+                    handleFinish();
+                  } else {
+                    setCurrentStep(prev => prev + 1);
+                  }
+                }}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-bold transition-all shadow-lg min-h-12 ${
                   isLast 
                     ? 'bg-green-600 hover:bg-green-700 text-white hover:shadow-green-500/20' 
                     : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-blue-500/20'

@@ -66,7 +66,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Verifica se é o primeiro acesso para exibir o tour
     const hasVisited = localStorage.getItem('sapee_has_visited');
-    if (!hasVisited) {
+    const skipTour = localStorage.getItem('sapee_skip_tour');
+
+    // Só mostra o tour se o usuário nunca visitou E não marcou "não mostrar novamente"
+    if (!hasVisited && !skipTour) {
       setShowTour(true);
       localStorage.setItem('sapee_has_visited', 'true');
     }
@@ -260,11 +263,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Mobile Header */}
-        <header className="md:hidden flex items-center justify-between px-4 py-4 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 sticky top-0 z-30">
-          <div className="flex items-center gap-3">
+        <header className="md:hidden flex items-center justify-between px-3 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 sticky top-0 z-30">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="p-2 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+              className="p-2.5 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition-all min-w-11 min-h-11 flex items-center justify-center"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -273,13 +276,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {/* Sino de Notificações Mobile */}
             <NotificationBell />
 
+            {/* Botão de Ajuda Mobile */}
+            <button
+              onClick={() => setIsHelpOpen(true)}
+              className="p-2.5 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition-all min-w-11 min-h-11 flex items-center justify-center"
+              title="Guia e Ajuda"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+              className="p-2.5 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition-all min-w-11 min-h-11 flex items-center justify-center"
             >
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
@@ -308,7 +320,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25 }}
-              className="fixed left-0 top-0 h-full w-80 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-y-auto"
+              className="fixed left-0 top-0 h-full w-[85vw] max-w-sm bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-y-auto"
             >
               <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">

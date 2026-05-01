@@ -229,18 +229,18 @@ export default function Intervencoes() {
   }, [stats]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header Limpo */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Intervenções Pedagógicas</h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1">Histórico e gestão global de ações de apoio ao aluno</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Intervenções Pedagógicas</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Histórico e gestão global de ações de apoio ao aluno</p>
         </div>
       </div>
 
       {/* Stats Cards */}
       {statsCards.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {statsCards.map((stat, index) => (
             <motion.div
               key={stat.title}
@@ -248,21 +248,21 @@ export default function Intervencoes() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               className={cn(
-                "rounded-2xl p-6",
+                "rounded-2xl p-4 md:p-6",
                 stat.bgColor,
                 "border border-gray-100 dark:border-slate-700"
               )}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-slate-300">{stat.title}</p>
-                  <p className="text-3xl font-bold text-gray-800 dark:text-white mt-2">{stat.value}</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-600 dark:text-slate-300">{stat.title}</p>
+                  <p className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mt-1 md:mt-2">{stat.value}</p>
                 </div>
                 <div className={cn(
-                  "p-3 rounded-xl bg-gradient-to-br",
+                  "p-2 md:p-3 rounded-xl bg-linear-to-br",
                   stat.color
                 )}>
-                  <stat.icon className="w-6 h-6 text-white" />
+                  <stat.icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
                 </div>
               </div>
             </motion.div>
@@ -271,14 +271,16 @@ export default function Intervencoes() {
       )}
 
       {/* Filtros (Sem RASCUNHO) */}
-      <div className="flex items-center gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-        <Filter className="w-5 h-5 text-gray-400 dark:text-slate-500" />
-        <span className="text-sm font-medium text-gray-600 dark:text-slate-300">Filtrar por status:</span>
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 md:p-4 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Filter className="w-5 h-5 text-gray-400 dark:text-slate-500 shrink-0" />
+          <span className="text-sm font-medium text-gray-600 dark:text-slate-300">Filtrar:</span>
+        </div>
+        <div className="flex gap-2 flex-wrap flex-1">
           <button
             onClick={() => handleStatusFilter('')}
             className={cn(
-              "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+              "px-3 py-2 rounded-lg text-sm font-bold transition-all min-h-11",
               !status
                 ? "bg-blue-600 text-white shadow-md"
                 : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
@@ -292,7 +294,7 @@ export default function Intervencoes() {
               key={s}
               onClick={() => handleStatusFilter(s)}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                "px-3 py-2 rounded-lg text-sm font-bold transition-all min-h-11",
                 status === s
                   ? "bg-blue-600 text-white shadow-md"
                   : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
@@ -306,8 +308,8 @@ export default function Intervencoes() {
 
       {/* Lista de Intervenções */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+        <div className="p-4 md:p-6 border-b border-gray-100 dark:border-slate-700">
+          <h2 className="text-base md:text-lg font-bold text-gray-800 dark:text-white">
             {status ? `${status.replace('_', ' ')}` : 'Todas'} as Intervenções
           </h2>
         </div>
@@ -318,8 +320,8 @@ export default function Intervencoes() {
             <p className="text-gray-500 dark:text-slate-400 mt-4">Carregando histórico...</p>
           </div>
         ) : intervencoes.length === 0 ? (
-          <div className="p-12 text-center">
-            <ClipboardList className="w-16 h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
+          <div className="p-8 md:p-12 text-center">
+            <ClipboardList className="w-12 h-12 md:w-16 md:h-16 text-gray-300 dark:text-slate-600 mx-auto mb-4" />
             <p className="text-gray-500 dark:text-slate-300 font-medium">Nenhuma intervenção encontrada</p>
             <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Ações registradas aparecerão aqui</p>
           </div>
@@ -337,51 +339,51 @@ export default function Intervencoes() {
                   key={intervencao.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="p-6 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+                  className="p-4 md:p-6 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
                       {/* Indicador de prioridade */}
                       <div className={cn(
-                        "w-1 h-16 rounded-full",
+                        "w-1 h-12 md:h-16 rounded-full shrink-0",
                         prioridadeConfig[intervencao.prioridade]
                       )} />
 
                       {/* Ícone de status */}
                       <div className={cn(
-                        "p-3 rounded-xl",
+                        "p-2 md:p-3 rounded-xl shrink-0",
                         config.color
                       )}>
-                        <StatusIcon className="w-5 h-5" />
+                        <StatusIcon className="w-4 h-4 md:w-5 md:h-5" />
                       </div>
 
                       {/* Conteúdo */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-bold text-gray-800 dark:text-white">{intervencao.tipo}</h3>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="text-base md:text-lg font-bold text-gray-800 dark:text-white truncate">{intervencao.tipo}</h3>
                           <span className={cn(
-                            "px-3 py-1 rounded-full text-xs font-bold",
+                            "px-2 py-1 rounded-full text-xs font-bold",
                             config.color
                           )}>
                             {config.label}
                           </span>
                           <span className={cn(
-                            "px-3 py-1 rounded-full text-xs font-bold text-white",
+                            "px-2 py-1 rounded-full text-xs font-bold text-white",
                             prioridadeConfig[intervencao.prioridade]
                           )}>
                             {intervencao.prioridade.replace('_', ' ')}
                           </span>
                         </div>
 
-                        <p className="text-gray-600 dark:text-slate-300 mb-3 line-clamp-2">{intervencao.descricao}</p>
+                        <p className="text-sm text-gray-600 dark:text-slate-300 mb-3 line-clamp-2">{intervencao.descricao}</p>
 
-                        <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-slate-400">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-slate-400">
                           <div className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
-                            <span>{intervencao.usuario?.nome || 'N/A'}</span>
+                            <User className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{intervencao.usuario?.nome || 'N/A'}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
+                            <Calendar className="w-4 h-4 shrink-0" />
                             <span>
                               {new Date(intervencao.data_intervencao).toLocaleDateString('pt-BR')}
                             </span>
@@ -389,7 +391,7 @@ export default function Intervencoes() {
                           {intervencao.aluno && (
                             <Link
                               to={`/alunos/${intervencao.aluno.matricula}`}
-                              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium truncate"
                             >
                               {intervencao.aluno.nome}
                             </Link>
@@ -399,17 +401,17 @@ export default function Intervencoes() {
                     </div>
 
                     {/* Ações */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 sm:shrink-0 pl-7 sm:pl-0">
                       <button
                         onClick={() => handleEdit(intervencao)}
-                        className="p-2 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg transition-all"
+                        className="p-2.5 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg transition-all min-w-11 min-h-11 flex items-center justify-center"
                         title="Editar/Atualizar Status"
                       >
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleDelete(intervencao.id)}
-                        className="p-2 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                        className="p-2.5 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all min-w-11 min-h-11 flex items-center justify-center"
                         title="Excluir"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -424,11 +426,11 @@ export default function Intervencoes() {
 
         {/* Paginação */}
         {!isLoading && intervencoes.length > 0 && (
-          <div className="p-6 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
+          <div className="p-4 md:p-6 border-t border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3">
             <button
               onClick={() => handlePageChange(page - 1)}
               disabled={page === 1}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-11 w-full sm:w-auto justify-center"
             >
               <ChevronLeft className="w-5 h-5" />
               Anterior
@@ -441,7 +443,7 @@ export default function Intervencoes() {
             <button
               onClick={() => handlePageChange(page + 1)}
               disabled={intervencoes.length < limit}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-11 w-full sm:w-auto justify-center"
             >
               Próxima
               <ChevronRight className="w-5 h-5" />

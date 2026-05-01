@@ -351,43 +351,43 @@ export default function AlunosMonitoramento() {
   });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
-            <Eye className="w-8 h-8 text-amber-500" />
-            Monitoramento Preventivo
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2 md:gap-3">
+            <Eye className="w-6 h-6 md:w-8 md:h-8 text-amber-500" />
+            <span className="truncate">Monitoramento Preventivo</span>
           </h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1">
-            Alunos com risco MÉDIO que precisam de acompanhamento para evitar piora
+          <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400 mt-1">
+            Alunos com risco MEDIO que precisam de acompanhamento para evitar piora
           </p>
         </div>
         <Link
           to="/alunos-em-risco"
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
+          className="flex items-center gap-2 px-3 md:px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-500/20 text-sm md:text-base min-h-11"
         >
-          <AlertCircle className="w-5 h-5" />
-          Ver Alunos em Risco Crítico
+          <AlertCircle className="w-4 h-4 md:w-5 md:h-5" />
+          <span className="truncate">Ver Alunos em Risco Critico</span>
         </Link>
       </div>
 
       {/* Stats */}
-      <div className="bg-linear-to-r from-amber-500 to-yellow-500 rounded-2xl p-6 text-white">
+      <div className="bg-linear-to-r from-amber-500 to-yellow-500 rounded-2xl p-4 md:p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-amber-100 text-sm">Alunos sem intervenção</p>
-            <p className="text-4xl font-bold">{filteredAlunos.length}</p>
+            <p className="text-amber-100 text-xs md:text-sm">Alunos sem intervencao</p>
+            <p className="text-3xl md:text-4xl font-bold">{filteredAlunos.length}</p>
           </div>
-          <TrendingUp className="w-16 h-16 text-white/30" />
+          <TrendingUp className="w-12 h-12 md:w-16 md:h-16 text-white/30" />
         </div>
       </div>
 
       {/* Info Box */}
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 md:p-4 flex items-start gap-3">
+        <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
         <div>
-          <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">O que é Monitoramento Preventivo?</p>
+          <p className="text-xs md:text-sm text-amber-800 dark:text-amber-300 font-medium">O que é Monitoramento Preventivo?</p>
           <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
             Alunos com risco MÉDIO não precisam de intervenção urgente, mas merecem atenção especial.
             O acompanhamento preventivo evita que a situação piore para ALTO ou MUITO_ALTO.
@@ -397,18 +397,18 @@ export default function AlunosMonitoramento() {
 
       {/* Seção de Sugestões Pendentes */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-400 shadow-lg overflow-hidden">
-        <div className="bg-linear-to-r from-amber-500 to-orange-500 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 text-white">
-            <Bot className="w-6 h-6" />
+        <div className="bg-linear-to-r from-amber-500 to-orange-500 p-3 md:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 md:gap-3 text-white">
+            <Bot className="w-5 h-5 md:w-6 md:h-6" />
             <div>
-              <h2 className="text-lg font-bold">⚡ Sugestões Pendentes ({rascunhos.length})</h2>
+              <h2 className="text-base md:text-lg font-bold">⚡ Sugestões Pendentes ({rascunhos.length})</h2>
               <p className="text-amber-100 text-xs">O sistema gerou estas sugestões com base no risco dos alunos</p>
             </div>
           </div>
           <button
             onClick={handleGerarSugestoes}
             disabled={gerandoRascunhos}
-            className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-3 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-11 w-full sm:w-auto"
           >
             {gerandoRascunhos ? 'Gerando...' : '✨ Gerar Novas'}
           </button>
@@ -460,22 +460,22 @@ export default function AlunosMonitoramento() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 sm:shrink-0 pl-6 sm:pl-0">
+                  <div className="flex items-center gap-2 sm:shrink-0 pl-6 sm:pl-0 flex-wrap">
                     <button
                       onClick={() => handleAprovarRascunho(r.id)}
-                      className="flex items-center gap-1 px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors"
+                      className="flex items-center justify-center gap-1 px-3 py-2.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors min-h-11 flex-1 sm:flex-none"
                     >
                       <Check className="w-4 h-4" /> Aprovar
                     </button>
                     <button
                       onClick={() => handleEditarRascunho(r)}
-                      className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
+                      className="flex items-center justify-center gap-1 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors min-h-11 flex-1 sm:flex-none"
                     >
                       <Edit className="w-4 h-4" /> Editar
                     </button>
                     <button
                       onClick={() => handleRejeitarRascunho(r.id)}
-                      className="flex items-center gap-1 px-3 py-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 transition-colors"
+                      className="flex items-center justify-center gap-1 px-3 py-2.5 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 transition-colors min-h-11 flex-1 sm:flex-none"
                     >
                       <X className="w-4 h-4" /> Rejeitar
                     </button>
@@ -514,7 +514,7 @@ export default function AlunosMonitoramento() {
           <p className="text-gray-500 dark:text-slate-400 mt-2">Não há alunos com risco MÉDIO no momento.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredAlunos.map((aluno) => (
             <motion.div
               key={aluno.matricula}
@@ -523,50 +523,50 @@ export default function AlunosMonitoramento() {
               className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-400 shadow-lg overflow-hidden flex flex-col"
             >
               {/* Header do Card */}
-              <div className="bg-linear-to-r from-amber-500 to-yellow-500 p-4 text-white shrink-0">
+              <div className="bg-linear-to-r from-amber-500 to-yellow-500 p-3 md:p-4 text-white shrink-0">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-lg truncate">{aluno.nome}</h3>
-                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold shrink-0">
+                  <h3 className="font-bold text-base md:text-lg truncate">{aluno.nome}</h3>
+                  <span className="bg-white/20 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-bold shrink-0">
                     {aluno.risco_evasao}%
                   </span>
                 </div>
-                <p className="text-white/80 text-sm">{aluno.matricula}</p>
+                <p className="text-white/80 text-xs md:text-sm">{aluno.matricula}</p>
               </div>
 
               {/* Conteúdo do Card */}
-              <div className="p-4 space-y-3 flex-1 flex flex-col">
-                <div className="grid grid-cols-2 gap-3 text-sm shrink-0">
+              <div className="p-3 md:p-4 space-y-3 flex-1 flex flex-col">
+                <div className="grid grid-cols-2 gap-2 md:gap-3 text-xs md:text-sm shrink-0">
                   <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-gray-400 shrink-0" />
+                    <BookOpen className="w-3 h-3 md:w-4 md:h-4 text-gray-400 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Curso</p>
-                      <p className="font-medium text-gray-800 dark:text-white text-xs truncate">{aluno.curso}</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Curso</p>
+                      <p className="font-medium text-gray-800 dark:text-white text-[10px] md:text-xs truncate">{aluno.curso}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gray-400 shrink-0" />
+                    <Clock className="w-3 h-3 md:w-4 md:h-4 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Período</p>
-                      <p className="font-medium text-gray-800 dark:text-white">{aluno.periodo}º</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Periodo</p>
+                      <p className="font-medium text-gray-800 dark:text-white text-[10px] md:text-xs">{aluno.periodo}º</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-gray-400 shrink-0" />
+                    <BarChart3 className="w-3 h-3 md:w-4 md:h-4 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Média</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Media</p>
                       <p className={cn(
-                        "font-bold",
+                        "font-bold text-[10px] md:text-xs",
                         aluno.media_geral >= 7 ? "text-emerald-600" :
                         aluno.media_geral >= 5 ? "text-amber-600" : "text-red-500"
                       )}>{aluno.media_geral}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gray-400 shrink-0" />
+                    <User className="w-3 h-3 md:w-4 md:h-4 text-gray-400 shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Freq</p>
+                      <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Freq</p>
                       <p className={cn(
-                        "font-bold",
+                        "font-bold text-[10px] md:text-xs",
                         aluno.frequencia >= 85 ? "text-emerald-600" :
                         aluno.frequencia >= 75 ? "text-amber-600" : "text-red-500"
                       )}>{aluno.frequencia}%</p>

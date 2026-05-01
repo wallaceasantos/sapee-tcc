@@ -207,16 +207,16 @@ export default function IndicadoresEficacia() {
   }
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Indicadores de Eficácia</h1>
-          <p className="text-gray-500 dark:text-slate-400 mt-1">Métricas de impacto do sistema SAPEE</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Indicadores de Eficácia</h1>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400 mt-1">Métricas de impacto do sistema SAPEE</p>
         </div>
 
         {/* Filtro de Período */}
-        <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl">
+        <div className="flex items-center gap-1 md:gap-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl w-full sm:w-auto">
           <button
             onClick={() => setPeriodo('6m')}
             className={cn(
@@ -254,7 +254,7 @@ export default function IndicadoresEficacia() {
       </div>
 
       {/* Cards de Métricas Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {metricCards.map((card, index) => (
           <motion.div
             key={card.title}
@@ -262,7 +262,7 @@ export default function IndicadoresEficacia() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             className={cn(
-              "rounded-2xl p-6",
+              "rounded-2xl p-4 md:p-6",
               card.bgColor,
               "border border-gray-100 dark:border-slate-700"
             )}
@@ -293,14 +293,14 @@ export default function IndicadoresEficacia() {
       </div>
 
       {/* Seção: Evasão Real vs. Predita */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-2 mb-6">
-          <Activity className="w-6 h-6 text-blue-600" />
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white">Evasão Real vs. Predita</h2>
+      <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-2 mb-4 md:mb-6">
+          <Activity className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+          <h2 className="text-base md:text-xl font-bold text-gray-800 dark:text-white">Evasão Real vs. Predita</h2>
         </div>
 
         {data && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
             <div className="p-6 bg-gray-50 dark:bg-slate-800 rounded-xl">
               <p className="text-sm font-medium text-gray-600 dark:text-slate-300 mb-2">Total em Risco ALTO</p>
               <p className="text-4xl font-bold text-gray-800 dark:text-white">{data.evasao_real_vs_predita.total_risco_alto}</p>
@@ -327,10 +327,10 @@ export default function IndicadoresEficacia() {
       </div>
 
       {/* Seção: ROI do Sistema */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-2 mb-6">
-          <Target className="w-6 h-6 text-purple-600" />
-          <h2 className="text-xl font-bold text-gray-800 dark:text-white">ROI do Sistema (Alunos Salvos)</h2>
+      <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-2 mb-4 md:mb-6">
+          <Target className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
+          <h2 className="text-base md:text-xl font-bold text-gray-800 dark:text-white">ROI do Sistema (Alunos Salvos)</h2>
         </div>
 
         {data && (
@@ -377,10 +377,10 @@ export default function IndicadoresEficacia() {
 
       {/* Seção: Alunos Recuperados (Lista) */}
       {data && data.alunos_recuperados.lista.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-2 mb-6">
-            <CheckCircle className="w-6 h-6 text-emerald-600" />
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Alunos Recuperados (Top 10)</h2>
+        <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-2 mb-4 md:mb-6">
+            <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-emerald-600" />
+            <h2 className="text-base md:text-xl font-bold text-gray-800 dark:text-white">Alunos Recuperados (Top 10)</h2>
           </div>
 
           <div className="overflow-x-auto">
@@ -448,10 +448,10 @@ export default function IndicadoresEficacia() {
 
       {/* Seção: Impacto por Tipo de Intervenção */}
       {impactoChartData.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-2 mb-6">
-            <Award className="w-6 h-6 text-orange-600" />
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Impacto por Tipo de Intervenção</h2>
+        <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-2 mb-4 md:mb-6">
+            <Award className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
+            <h2 className="text-base md:text-xl font-bold text-gray-800 dark:text-white">Impacto por Tipo de Intervenção</h2>
           </div>
 
           <ResponsiveContainer width="100%" height={300}>
