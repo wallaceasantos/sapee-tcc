@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 
 # Importar rotas de notificações
 from routes.notificacoes import router as notificacoes_router
+from routes.notificacoes_faltas import router as notificacoes_faltas_router
 
 # ============================================
 # CONFIGURAÇÃO INICIAL
@@ -515,7 +516,11 @@ def alunos_em_risco(
             'dificuldade_acesso': a.dificuldade_acesso,
             'possui_computador': a.possui_computador,
             'possui_internet': a.possui_internet,
-            'beneficiario_bolsa_familia': a.beneficiario_bolsa_familia
+            'beneficiario_bolsa_familia': a.beneficiario_bolsa_familia,
+            # Dados do responsável para contato
+            'nome_responsavel_1': a.nome_responsavel_1,
+            'parentesco_responsavel_1': a.parentesco_responsavel_1,
+            'telefone_responsavel_1': a.telefone_responsavel_1,
         })
 
     return {'alunos': resultado, 'total': len(resultado)}
@@ -767,6 +772,15 @@ def list_alunos(
             'possui_internet': aluno.possui_internet,
             'beneficiario_bolsa_familia': aluno.beneficiario_bolsa_familia,
             'primeiro_geracao_universidade': aluno.primeiro_geracao_universidade,
+            'nome_responsavel_1': aluno.nome_responsavel_1,
+            'parentesco_responsavel_1': aluno.parentesco_responsavel_1,
+            'telefone_responsavel_1': aluno.telefone_responsavel_1,
+            'email_responsavel_1': aluno.email_responsavel_1,
+            'nome_responsavel_2': aluno.nome_responsavel_2,
+            'parentesco_responsavel_2': aluno.parentesco_responsavel_2,
+            'telefone_responsavel_2': aluno.telefone_responsavel_2,
+            'questionario_respondido': aluno.questionario_respondido,
+            'data_ultimo_questionario': aluno.data_ultimo_questionario,
             'curso': aluno.curso,
             'predicao_atual': {
                 'id': predicao.id,
@@ -972,6 +986,15 @@ def get_aluno(
         'possui_internet': aluno.possui_internet,
         'beneficiario_bolsa_familia': aluno.beneficiario_bolsa_familia,
         'primeiro_geracao_universidade': aluno.primeiro_geracao_universidade,
+        'nome_responsavel_1': aluno.nome_responsavel_1,
+        'parentesco_responsavel_1': aluno.parentesco_responsavel_1,
+        'telefone_responsavel_1': aluno.telefone_responsavel_1,
+        'email_responsavel_1': aluno.email_responsavel_1,
+        'nome_responsavel_2': aluno.nome_responsavel_2,
+        'parentesco_responsavel_2': aluno.parentesco_responsavel_2,
+        'telefone_responsavel_2': aluno.telefone_responsavel_2,
+        'questionario_respondido': aluno.questionario_respondido,
+        'data_ultimo_questionario': aluno.data_ultimo_questionario,
     }
 
     # Pegar última predição (BUSCAR DIRETAMENTE DO BANCO)
@@ -2101,12 +2124,36 @@ def create_intervencao(
     hoje = datetime.now().date()
     data_limite = hoje + relativedelta(months=6)
 
+    # Buscar última predição do aluno para preencher motivo_risco
+    ultima_predicao = db.query(models.Predicao).filter(
+        models.Predicao.aluno_id == matricula
+    ).order_by(models.Predicao.data_predicao.desc()).first()
+
+    motivo_risco_json = None
+    if ultima_predicao:
+        score = ultima_predicao.risco_evasao
+        motivos = _get_motivo_risco(aluno, score)
+        motivo_risco_json = f'{{"nivel":"{ultima_predicao.nivel_risco.value if hasattr(ultima_predicao.nivel_risco, "value") else ultima_predicao.nivel_risco}","score":{score:.0f},"fatores":"{motivos}"}}'
+    elif aluno.frequencia or aluno.media_geral:
+        # Se não tem predição, cria um motivo básico baseado nos dados do aluno
+        score_estimado = 0
+        if aluno.frequencia and float(aluno.frequencia) < 75:
+            score_estimado += 30
+        if aluno.media_geral and float(aluno.media_geral) < 6:
+            score_estimado += 40
+        if aluno.historico_reprovas and int(aluno.historico_reprovas) > 0:
+            score_estimado += 20
+        motivos = _get_motivo_risco(aluno, score_estimado)
+        nivel = "ALTO" if score_estimado >= 70 else "MEDIO" if score_estimado >= 40 else "BAIXO"
+        motivo_risco_json = f'{{"nivel":"{nivel}","score":{score_estimado:.0f},"fatores":"{motivos}"}}'
+
     # Criar intervenção com ciclo automático
     db_intervencao = models.Intervencao(
         **intervencao.model_dump(),
         aluno_id=matricula,
         usuario_id=current_user.id,  # Usa o ID do usuário autenticado
-        data_limite=data_limite       # Define o prazo de 6 meses
+        data_limite=data_limite,       # Define o prazo de 6 meses
+        motivo_risco=motivo_risco_json # Preenche com score e fatores do aluno
     )
     
     db.add(db_intervencao)
@@ -3582,25 +3629,34 @@ def verificar_faltas_consecutivas(
 def listar_alertas_faltas(
     status: Optional[str] = None,
     tipo_alerta: Optional[str] = None,
+    curso_id: Optional[int] = None,
     current_user: models.Usuario = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """Listar alertas de faltas consecutivas com filtros"""
     query = db.query(models.AlertaFaltasConsecutivas).options(
-        joinedload(models.AlertaFaltasConsecutivas.aluno)
+        joinedload(models.AlertaFaltasConsecutivas.aluno),
+        joinedload(models.AlertaFaltasConsecutivas.responsavel),
+        joinedload(models.AlertaFaltasConsecutivas.historico).joinedload(models.AlertaFaltasHistorico.usuario)
     )
-    
+
     # Filtrar por curso se não for ADMIN
     if current_user.role.nome != "ADMIN" and current_user.curso_id:
         query = query.join(models.AlertaFaltasConsecutivas.aluno).filter(
             models.Aluno.curso_id == current_user.curso_id
         )
-    
+
+    # Filtro por curso (para ADMIN)
+    if current_user.role.nome == "ADMIN" and curso_id:
+        query = query.join(models.AlertaFaltasConsecutivas.aluno).filter(
+            models.Aluno.curso_id == curso_id
+        )
+
     if status:
         query = query.filter(models.AlertaFaltasConsecutivas.status == status)
     if tipo_alerta:
         query = query.filter(models.AlertaFaltasConsecutivas.tipo_alerta == tipo_alerta)
-    
+
     alertas = query.order_by(models.AlertaFaltasConsecutivas.criado_at.desc()).all()
     return alertas
 
@@ -3616,25 +3672,143 @@ def atualizar_alerta_falta(
     db_alerta = db.query(models.AlertaFaltasConsecutivas).filter(
         models.AlertaFaltasConsecutivas.id == alerta_id
     ).first()
-    
+
     if not db_alerta:
         raise HTTPException(status_code=404, detail="Alerta não encontrado")
-    
+
     update_data = alerta_update.model_dump(exclude_unset=True)
-    
-    # Auto-set data_resolucao se status for RESOLVIDO
-    if update_data.get('status') == 'RESOLVIDO' and not db_alerta.data_resolucao:
+
+    # Registrar alterações no histórico
+    if update_data.get('status') and update_data['status'] != db_alerta.status:
         from datetime import date
-        update_data['data_resolucao'] = date.today()
-        update_data['resolvido_por'] = current_user.id
-    
+        historico_entry = models.AlertaFaltasHistorico(
+            alerta_id=alerta_id,
+            acao='STATUS_ALTERADO',
+            descricao=f"Status alterado de {db_alerta.status} para {update_data['status']} por {current_user.nome}",
+            usuario_id=current_user.id
+        )
+        db.add(historico_entry)
+
+        # Auto-set data_resolucao se status for RESOLVIDO
+        if update_data['status'] == 'RESOLVIDO' and not db_alerta.data_resolucao:
+            update_data['data_resolucao'] = date.today()
+            update_data['resolvido_por'] = current_user.id
+
+            # Adicionar entrada no histórico de resolução
+            historico_resolucao = models.AlertaFaltasHistorico(
+                alerta_id=alerta_id,
+                acao='ALERTA_RESOLVIDO',
+                descricao=f"Alerta resolvido por {current_user.nome}",
+                usuario_id=current_user.id
+            )
+            db.add(historico_resolucao)
+
+    if update_data.get('responsavel_id') and update_data['responsavel_id'] != db_alerta.responsavel_id:
+        usuario_resp = db.query(models.Usuario).filter(models.Usuario.id == update_data['responsavel_id']).first()
+        historico_entry = models.AlertaFaltasHistorico(
+            alerta_id=alerta_id,
+            acao='RESPONSAVEL_ATRIBUIDO',
+            descricao=f"Responsável alterado para {usuario_resp.nome if usuario_resp else 'N/A'} por {current_user.nome}",
+            usuario_id=current_user.id
+        )
+        db.add(historico_entry)
+
+    if update_data.get('acoes_tomadas') and update_data['acoes_tomadas'] != db_alerta.acoes_tomadas:
+        historico_entry = models.AlertaFaltasHistorico(
+            alerta_id=alerta_id,
+            acao='OBSERVACAO_ADICIONADA',
+            descricao=f"Observação adicionada/atualizada: {update_data['acoes_tomadas'][:100]}...",
+            usuario_id=current_user.id
+        )
+        db.add(historico_entry)
+
     for key, value in update_data.items():
         setattr(db_alerta, key, value)
-    
+
     db.commit()
     db.refresh(db_alerta)
-    
+
+    # Recarregar com relacionamentos
+    db_alerta = db.query(models.AlertaFaltasConsecutivas).options(
+        joinedload(models.AlertaFaltasConsecutivas.aluno),
+        joinedload(models.AlertaFaltasConsecutivas.responsavel),
+        joinedload(models.AlertaFaltasConsecutivas.historico).joinedload(models.AlertaFaltasHistorico.usuario)
+    ).filter(models.AlertaFaltasConsecutivas.id == alerta_id).first()
+
     return db_alerta
+
+
+@app.post("/alertas-faltas/{alerta_id}/historico", response_model=schemas.AlertaFaltasHistoricoResponse)
+def registrar_historico_alerta(
+    alerta_id: int,
+    historico_data: dict,
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """Registrar entrada no histórico de alerta"""
+    db_alerta = db.query(models.AlertaFaltasConsecutivas).filter(
+        models.AlertaFaltasConsecutivas.id == alerta_id
+    ).first()
+
+    if not db_alerta:
+        raise HTTPException(status_code=404, detail="Alerta não encontrado")
+
+    historico_entry = models.AlertaFaltasHistorico(
+        alerta_id=alerta_id,
+        acao=historico_data.get('acao', 'OBSERVACAO_ADICIONADA'),
+        descricao=historico_data.get('descricao', ''),
+        usuario_id=current_user.id
+    )
+    db.add(historico_entry)
+    db.commit()
+    db.refresh(historico_entry)
+
+    return historico_entry
+
+
+@app.post("/alertas-faltas/auto-resolver")
+def auto_resolver_alertas(
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Resolver alertas automaticamente quando frequência do aluno melhora > 80%.
+    Pode ser chamado periodicamente ou manualmente.
+    """
+    alertas_resolvidos = 0
+
+    # Buscar alertas pendentes ou em análise
+    alertas_ativos = db.query(models.AlertaFaltasConsecutivas).filter(
+        models.AlertaFaltasConsecutivas.status.in_(['PENDENTE', 'EM_ANALISE'])
+    ).all()
+
+    for alerta in alertas_ativos:
+        # Verificar frequência atual do aluno
+        aluno = db.query(models.Aluno).filter(
+            models.Aluno.matricula == alerta.aluno_matricula
+        ).first()
+
+        if aluno and aluno.frequencia and float(aluno.frequencia) >= 80:
+            alerta.status = 'RESOLVIDO'
+            alerta.data_resolucao = datetime.now().date()
+            alerta.acoes_tomadas = (alerta.acoes_tomadas or '') + '\n[Auto-resolvido] Frequência do aluno atingiu ' + str(aluno.frequencia) + '%.'
+
+            # Registrar no histórico
+            historico = models.AlertaFaltasHistorico(
+                alerta_id=alerta.id,
+                acao='AUTO_RESOLVIDO',
+                descricao=f'Alerta resolvido automaticamente. Frequência do aluno: {aluno.frequencia}%',
+                usuario_id=None  # Sistema
+            )
+            db.add(historico)
+            alertas_resolvidos += 1
+
+    db.commit()
+
+    return {
+        "alertas_resolvidos": alertas_resolvidos,
+        "mensagem": f"{alertas_resolvidos} alerta(s) resolvido(s) automaticamente"
+    }
 
 
 @app.get("/dashboard/faltas-stats")
@@ -3668,6 +3842,246 @@ def get_dashboard_faltas_stats(
         "total_alertas_5_faltas": alertas_5,
         "total_alertas_10_faltas": alertas_10,
         "alunos_com_faltas_consecutivas": alunos_com_alertas
+    }
+
+
+@app.get("/alertas-faltas/comparativo-mensal")
+def get_comparativo_mensal(
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Comparativo mensal de alertas.
+    Retorna dados dos últimos 6 meses para comparação.
+    """
+    from datetime import date
+    from sqlalchemy import func, extract
+
+    query = db.query(models.AlertaFaltasConsecutivas)
+
+    # Filtrar por curso se não for ADMIN
+    if current_user.role.nome != "ADMIN" and current_user.curso_id:
+        query = query.join(models.AlertaFaltasConsecutivas.aluno).filter(
+            models.Aluno.curso_id == current_user.curso_id
+        )
+
+    # Dados dos últimos 6 meses
+    hoje = date.today()
+    meses_dados = []
+
+    for i in range(5, -1, -1):
+        mes_ref = hoje.month - i
+        ano_ref = hoje.year
+        if mes_ref <= 0:
+            mes_ref += 12
+            ano_ref -= 1
+
+        total = query.filter(
+            extract('month', models.AlertaFaltasConsecutivas.criado_at) == mes_ref,
+            extract('year', models.AlertaFaltasConsecutivas.criado_at) == ano_ref
+        ).count()
+
+        pendentes = query.filter(
+            extract('month', models.AlertaFaltasConsecutivas.criado_at) == mes_ref,
+            extract('year', models.AlertaFaltasConsecutivas.criado_at) == ano_ref,
+            models.AlertaFaltasConsecutivas.status.in_(['PENDENTE', 'EM_ANALISE'])
+        ).count()
+
+        resolvidos = query.filter(
+            extract('month', models.AlertaFaltasConsecutivas.criado_at) == mes_ref,
+            extract('year', models.AlertaFaltasConsecutivas.criado_at) == ano_ref,
+            models.AlertaFaltasConsecutivas.status == 'RESOLVIDO'
+        ).count()
+
+        from calendar import month_name
+        import locale
+        try:
+            locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+        except:
+            pass
+
+        nome_mes = month_name[mes_ref] if mes_ref in range(1, 13) else f'Mês {mes_ref}'
+        nome_mes = nome_mes.capitalize()
+
+        meses_dados.append({
+            "mes": nome_mes,
+            "ano": ano_ref,
+            "total": total,
+            "pendentes": pendentes,
+            "resolvidos": resolvidos
+        })
+
+    # Calcular variação do mês atual vs anterior
+    if len(meses_dados) >= 2:
+        atual = meses_dados[-1]
+        anterior = meses_dados[-2]
+        if anterior['total'] > 0:
+            variacao = round(((atual['total'] - anterior['total']) / anterior['total']) * 100, 1)
+        else:
+            variacao = 0 if atual['total'] == 0 else 100.0
+    else:
+        variacao = 0
+
+    return {
+        "meses": meses_dados,
+        "variacao_percentual": variacao,
+        "total_6_meses": sum(m['total'] for m in meses_dados)
+    }
+
+
+@app.get("/alertas-faltas/dashboard-efetividade")
+def get_dashboard_efetividade(
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Dashboard de efetividade: quantos alertas resultaram em intervenção
+    que melhorou a frequência do aluno.
+    """
+    query = db.query(models.AlertaFaltasConsecutivas)
+
+    # Filtrar por curso se não for ADMIN
+    if current_user.role.nome != "ADMIN" and current_user.curso_id:
+        query = query.join(models.AlertaFaltasConsecutivas.aluno).filter(
+            models.Aluno.curso_id == current_user.curso_id
+        )
+
+    # Total de alertas
+    total_alertas = query.count()
+
+    # Alertas resolvidos
+    resolvidos = query.filter(models.AlertaFaltasConsecutivas.status == 'RESOLVIDO').count()
+
+    # Alertas com intervenção associada (verificar por intervenções no período do alerta)
+    alertas_com_intervencao = 0
+    alertas_melhora_freq = 0
+
+    todos_alertas = query.all()
+    for alerta in todos_alertas:
+        # Verificar se há intervenção para este aluno no período do alerta
+        intervencao = db.query(models.Intervencao).filter(
+            models.Intervencao.aluno_id == alerta.aluno_matricula,
+            models.Intervencao.data_intervencao >= alerta.data_inicio_faltas,
+            models.Intervencao.data_intervencao <= alerta.data_fim_faltas
+        ).first()
+
+        if intervencao:
+            alertas_com_intervencao += 1
+
+            # Verificar se houve melhora na frequência
+            aluno = db.query(models.Aluno).filter(
+                models.Aluno.matricula == alerta.aluno_matricula
+            ).first()
+
+            if aluno and aluno.frequencia:
+                # Se frequência atual > 75%, consideramos melhora
+                if float(aluno.frequencia) >= 75:
+                    alertas_melhora_freq += 1
+
+    taxa_intervencao = round((alertas_com_intervencao / total_alertas * 100), 1) if total_alertas > 0 else 0
+    taxa_melhora = round((alertas_melhora_freq / alertas_com_intervencao * 100), 1) if alertas_com_intervencao > 0 else 0
+    taxa_resolucao = round((resolvidos / total_alertas * 100), 1) if total_alertas > 0 else 0
+
+    return {
+        "total_alertas": total_alertas,
+        "resolvidos": resolvidos,
+        "taxa_resolucao": taxa_resolucao,
+        "alertas_com_intervencao": alertas_com_intervencao,
+        "taxa_intervencao": taxa_intervencao,
+        "alertas_melhora_freq": alertas_melhora_freq,
+        "taxa_melhora_freq": taxa_melhora
+    }
+
+
+@app.get("/alunos/{matricula}/frequencia-mensal")
+def get_frequencia_mensal(
+    matricula: str,
+    mes: Optional[int] = None,
+    ano: Optional[int] = None,
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Calcular frequência mensal automaticamente a partir das faltas diárias.
+    
+    Retorna a frequência calculada baseada em:
+    - Total de aulas (dias únicos com registro de falta)
+    - Faltas justificadas e não justificadas
+    - Frequência = ((total - faltas_nao_just) / total) * 100
+    """
+    from datetime import datetime
+    from sqlalchemy import func, distinct
+    
+    # Verificar se aluno existe
+    aluno = db.query(models.Aluno).filter(models.Aluno.matricula == matricula).first()
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+    
+    # Definir período (padrão: últimos 6 meses)
+    hoje = datetime.now()
+    if mes and ano:
+        from datetime import date
+        data_inicio = date(ano, mes, 1)
+        if mes == 12:
+            data_fim = date(ano + 1, 1, 1)
+        else:
+            data_fim = date(ano, mes + 1, 1)
+    else:
+        # Últimos 6 meses
+        from datetime import timedelta
+        data_fim = hoje.date()
+        data_inicio = data_fim - timedelta(days=180)
+    
+    # Buscar faltas do período
+    faltas = db.query(models.RegistroFaltasDiarias).filter(
+        models.RegistroFaltasDiarias.aluno_matricula == matricula,
+        models.RegistroFaltasDiarias.data >= data_inicio,
+        models.RegistroFaltasDiarias.data < data_fim
+    ).all()
+    
+    if not faltas:
+        return {
+            "aluno_id": matricula,
+            "aluno_nome": aluno.nome,
+            "periodo": {
+                "inicio": data_inicio.isoformat(),
+                "fim": data_fim.isoformat()
+            },
+            "total_aulas": 0,
+            "faltas_justificadas": 0,
+            "faltas_nao_justificadas": 0,
+            "frequencia": 100.0,
+            "disciplinas": []
+        }
+    
+    # Calcular estatísticas
+    total_aulas_unicas = len(set(f.data for f in faltas))
+    faltas_justificadas = sum(1 for f in faltas if f.justificada)
+    faltas_nao_justificadas = len(faltas) - faltas_justificadas
+    disciplinas = list(set(f.disciplina for f in faltas))
+    
+    # Calcular frequência
+    # Fórmula: (total_aulas - faltas_nao_justificadas) / total_aulas * 100
+    if total_aulas_unicas > 0:
+        frequencia = ((total_aulas_unicas - faltas_nao_justificadas) / total_aulas_unicas) * 100
+    else:
+        frequencia = 100.0
+    
+    # Limitar entre 0 e 100
+    frequencia = max(0.0, min(100.0, frequencia))
+    
+    return {
+        "aluno_id": matricula,
+        "aluno_nome": aluno.nome,
+        "periodo": {
+            "inicio": data_inicio.isoformat(),
+            "fim": data_fim.isoformat()
+        },
+        "total_aulas": total_aulas_unicas,
+        "faltas_justificadas": faltas_justificadas,
+        "faltas_nao_justificadas": faltas_nao_justificadas,
+        "frequencia": round(frequencia, 2),
+        "disciplinas": disciplinas
     }
 
 
@@ -5124,6 +5538,7 @@ def estatisticas_egressos(
 # ============================================
 
 app.include_router(notificacoes_router, prefix="/api/v1")
+app.include_router(notificacoes_faltas_router, prefix="")
 
 # ============================================
 # IMPORTS NECESSÁRIOS (no final para evitar circular)

@@ -50,6 +50,16 @@ export interface AlunoAPI {
   possui_internet?: boolean;
   beneficiario_bolsa_familia?: boolean;
   primeiro_geracao_universidade?: boolean;
+
+  // Dados dos Responsáveis
+  nome_responsavel_1?: string;
+  parentesco_responsavel_1?: string;
+  telefone_responsavel_1?: string;
+  email_responsavel_1?: string;
+  nome_responsavel_2?: string;
+  parentesco_responsavel_2?: string;
+  telefone_responsavel_2?: string;
+
   predicao_atual?: {
     id: number;
     risco_evasao: number;

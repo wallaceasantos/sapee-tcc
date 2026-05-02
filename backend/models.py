@@ -168,6 +168,15 @@ class Aluno(Base):
     beneficiario_bolsa_familia = Column(Boolean, default=False)
     primeiro_geracao_universidade = Column(Boolean, default=False)
 
+    # Dados dos Responsáveis
+    nome_responsavel_1 = Column(String(100), nullable=True, comment="Nome do 1º Responsável")
+    parentesco_responsavel_1 = Column(String(50), nullable=True, comment="Parentesco do 1º Responsável")
+    telefone_responsavel_1 = Column(String(20), nullable=True, comment="Telefone do 1º Responsável")
+    email_responsavel_1 = Column(String(100), nullable=True, comment="E-mail do 1º Responsável")
+    nome_responsavel_2 = Column(String(100), nullable=True, comment="Nome do 2º Responsável")
+    parentesco_responsavel_2 = Column(String(50), nullable=True, comment="Parentesco do 2º Responsável")
+    telefone_responsavel_2 = Column(String(20), nullable=True, comment="Telefone do 2º Responsável")
+
     # Questionário Psicossocial
     questionario_respondido = Column(Boolean, default=False)
     data_ultimo_questionario = Column(DateTime(timezone=True))
@@ -381,6 +390,11 @@ class AlertaFaltasConsecutivas(Base):
     data_fim_faltas = Column(Date, nullable=False)
     disciplinas_afetadas = Column(Text)  # JSON array
     status = Column(Enum('PENDENTE', 'EM_ANALISE', 'RESOLVIDO', 'IGNORADO', name='status_alerta_enum'), default='PENDENTE', index=True)
+    responsavel_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True, comment="Usuário responsável por acompanhar este alerta")
+    data_limite = Column(Date, nullable=True, comment="Prazo máximo para resolução do alerta")
+    contato_responsavel_data = Column(Date, nullable=True, comment="Data do contato com os responsáveis")
+    contato_responsavel_meio = Column(String(50), nullable=True, comment="Meio de contato: Telefone, WhatsApp, Email, Presencial")
+    contato_responsavel_obs = Column(Text, nullable=True, comment="Observações sobre o contato com responsáveis")
     acoes_tomadas = Column(Text)
     resolvido_por = Column(Integer, ForeignKey("usuarios.id"))
     data_resolucao = Column(Date)
@@ -388,7 +402,25 @@ class AlertaFaltasConsecutivas(Base):
 
     # Relationships
     aluno = relationship("Aluno", back_populates="alertas_faltas")
-    usuario = relationship("Usuario", foreign_keys=[resolvido_por])
+    responsavel = relationship("Usuario", foreign_keys=[responsavel_id])
+    usuario_resolvedor = relationship("Usuario", foreign_keys=[resolvido_por])
+    historico = relationship("AlertaFaltasHistorico", back_populates="alerta", order_by="AlertaFaltasHistorico.criado_at.desc()", cascade="all, delete-orphan")
+
+
+class AlertaFaltasHistorico(Base):
+    """Histórico de ações realizadas em alertas de faltas"""
+    __tablename__ = "alertas_faltas_historico"
+
+    id = Column(Integer, primary_key=True, index=True)
+    alerta_id = Column(Integer, ForeignKey("alertas_faltas_consecutivas.id", ondelete="CASCADE"), nullable=False, index=True)
+    acao = Column(String(100), nullable=False, comment="Tipo de ação realizada")
+    descricao = Column(Text, nullable=False, comment="Descrição detalhada da ação")
+    usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, comment="Usuário que realizou a ação")
+    criado_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    alerta = relationship("AlertaFaltasConsecutivas", back_populates="historico")
+    usuario = relationship("Usuario")
 
 
 class QuestionarioPsicossocial(Base):

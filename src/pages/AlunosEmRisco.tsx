@@ -97,10 +97,14 @@ export default function AlunosEmRisco() {
       });
       setIntervencoesRecentes(recentes);
 
-      // 2. Alunos com Intervenção Ativa (Apenas Pendente e Em Andamento)
-      const ativas = data.filter((int: any) => {
+      // 2. Filtrar APENAS intervenções de alunos com risco ALTO/MUITO_ALTO
+      // Este módulo é exclusivo para alunos de alto risco
+      const ativas = recentes.filter((int: any) => {
         const status = String(int.status || '').toUpperCase();
-        return status === 'PENDENTE' || status === 'EM_ANDAMENTO';
+        const nivelRisco = int.aluno?.predicao_atual?.nivel_risco || 
+                          (int.motivo_risco ? JSON.parse(int.motivo_risco).nivel : null);
+        return (status === 'PENDENTE' || status === 'EM_ANDAMENTO') && 
+               (nivelRisco === 'ALTO' || nivelRisco === 'MUITO_ALTO');
       });
       setAlunosComIntervencao(ativas);
       
@@ -574,6 +578,35 @@ export default function AlunosEmRisco() {
                   </div>
                 )}
 
+                {/* Contato do Responsável */}
+                {(aluno.nome_responsavel_1 || aluno.telefone_responsavel_1) && (
+                  <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800 shrink-0">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mb-1">👤 Responsável</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-800 dark:text-gray-200 font-medium truncate">{aluno.nome_responsavel_1 || 'N/A'}</p>
+                        {aluno.parentesco_responsavel_1 && (
+                          <p className="text-[10px] text-gray-500 dark:text-slate-400">{aluno.parentesco_responsavel_1}</p>
+                        )}
+                        {aluno.telefone_responsavel_1 && (
+                          <p className="text-xs text-gray-700 dark:text-gray-300">{aluno.telefone_responsavel_1}</p>
+                        )}
+                      </div>
+                      {aluno.telefone_responsavel_1 && (
+                        <a
+                          href={`https://wa.me/${aluno.telefone_responsavel_1.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Somos do SAPEE - Sistema de Alerta de Predição de Evasão Escolar. Gostaríamos de conversar sobre o(a) aluno(a) ${aluno.nome}.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-bold transition-colors shrink-0 flex items-center gap-1"
+                          title="Enviar WhatsApp"
+                        >
+                          💬 WhatsApp
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Spacer para empurrar botão para baixo */}
                 <div className="flex-1" />
 
@@ -746,6 +779,11 @@ export default function AlunosEmRisco() {
                       <p className="text-sm font-medium text-gray-700 dark:text-slate-300 truncate">
                         {int.aluno?.nome || int.aluno_id}
                       </p>
+                      {int.usuario?.nome && (
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                          👤 Criado por: {int.usuario.nome}
+                        </p>
+                      )}
                       <span className={cn(
                         "inline-block px-2 py-1 rounded-full text-xs font-bold mt-1",
                         int.status === 'PENDENTE' ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" :
@@ -769,6 +807,42 @@ export default function AlunosEmRisco() {
                           )}
                         </div>
                       )}
+
+                      {/* Contato do Responsável na Intervenção */}
+                      {(() => {
+                        // Buscar dados do aluno no mapa ou do objeto aluno
+                        const matricula = String(int.aluno_id);
+                        const alunoData = int.aluno || {};
+                        const nomeResp = alunoData.nome_responsavel_1 || '';
+                        const telResp = alunoData.telefone_responsavel_1 || '';
+                        const parentesco = alunoData.parentesco_responsavel_1 || '';
+
+                        if (!nomeResp && !telResp) return null;
+
+                        return (
+                          <div className="mt-2 p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">👤 Responsável</p>
+                                <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{nomeResp || 'N/A'}</p>
+                                {parentesco && <p className="text-[10px] text-gray-500 dark:text-slate-400">{parentesco}</p>}
+                                {telResp && <p className="text-xs text-gray-700 dark:text-gray-300">{telResp}</p>}
+                              </div>
+                              {telResp && (
+                                <a
+                                  href={`https://wa.me/${telResp.replace(/\D/g, '')}?text=${encodeURIComponent(`Olá! Somos do SAPEE - Sistema de Alerta de Predição de Evasão Escolar. Gostaríamos de conversar sobre o(a) aluno(a) ${int.aluno?.nome || alunosMap[matricula] || 'do sistema'}.`)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-bold transition-colors shrink-0 flex items-center gap-1"
+                                  title="Enviar WhatsApp"
+                                >
+                                  💬 WhatsApp
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="text-left sm:text-right pl-4 sm:pl-0">

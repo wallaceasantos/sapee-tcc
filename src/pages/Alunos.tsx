@@ -385,10 +385,12 @@ export default function Alunos() {
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden">
-          <table className="w-full">
+          {/* Container com scroll horizontal para mobile */}
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] whitespace-nowrap">
             <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
               <tr>
-                <th className="px-6 py-4 text-left">
+                <th className="px-4 py-3 md:px-6 md:py-4 text-left">
                   <button onClick={toggleSelectAll} className="hover:opacity-70">
                     {selectedAlunos.length === filteredAlunos.length ? (
                       <CheckSquare className="w-5 h-5 text-emerald-600" />
@@ -397,19 +399,19 @@ export default function Alunos() {
                     )}
                   </button>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aluno</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Curso</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Período</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Média</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Frequência</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Risco</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Ações</th>
+                <th className="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Aluno</th>
+                <th className="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Curso</th>
+                <th className="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Período</th>
+                <th className="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Média</th>
+                <th className="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Frequência</th>
+                <th className="px-4 py-3 md:px-6 md:py-4 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Risco</th>
+                <th className="px-4 py-3 md:px-6 md:py-4 text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
               {filteredAlunos.map((aluno) => (
                 <tr key={aluno.matricula} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 md:px-6 md:py-4">
                     <button onClick={() => toggleSelect(aluno.matricula)} className="hover:opacity-70">
                       {selectedAlunos.includes(aluno.matricula) ? (
                         <CheckSquare className="w-5 h-5 text-emerald-600" />
@@ -418,21 +420,21 @@ export default function Alunos() {
                       )}
                     </button>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 md:px-6 md:py-4">
                     <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">{aluno.nome}</div>
-                      <div className="text-sm text-gray-500 dark:text-slate-400">{aluno.matricula}</div>
+                      <div className="font-semibold text-gray-900 dark:text-white whitespace-nowrap">{aluno.nome}</div>
+                      <div className="text-sm text-gray-500 dark:text-slate-400 whitespace-nowrap">{aluno.matricula}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300">
+                  <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-600 dark:text-slate-300 max-w-[200px] truncate">
                     {aluno.curso?.nome || 'Sem Curso'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300">
+                  <td className="px-4 py-3 md:px-6 md:py-4 text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap text-center">
                     {aluno.periodo}º
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
                         {aluno.media_geral?.toFixed(1) || 'N/A'}
                       </span>
                       <RiskProgressBar
@@ -442,9 +444,9 @@ export default function Alunos() {
                       />
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
                         {aluno.frequencia?.toFixed(0) || 'N/A'}%
                       </span>
                       <RiskProgressBar
@@ -454,35 +456,42 @@ export default function Alunos() {
                       />
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap">
                     {aluno.predicao_atual ? (
                       <RiskBadge nivel={aluno.predicao_atual.nivel_risco} />
                     ) : (
-                      <span className="text-xs text-gray-400">Sem predição</span>
+                      <span className="text-xs text-gray-400 whitespace-nowrap">Sem predição</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                  <td className="px-4 py-3 md:px-6 md:py-4 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1 md:gap-2">
                       <button
                         onClick={() => navigate(`/alunos/${aluno.matricula}`)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all"
+                        className="p-1.5 md:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all"
                         title="Visualizar"
                       >
-                        <Eye className="w-5 h-5" />
+                        <Eye className="w-4 h-4 md:w-5 md:h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleEdicaoRapida(aluno)}
+                        className="p-1.5 md:p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all"
+                        title="Edição Rápida"
+                      >
+                        <Zap className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                       <button
                         onClick={() => handleEditar(aluno.matricula)}
-                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-all"
+                        className="p-1.5 md:p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-all"
                         title="Editar"
                       >
-                        <Edit className="w-5 h-5" />
+                        <Edit className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                       <button
                         onClick={() => handleExcluirClick(aluno.matricula)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
+                        className="p-1.5 md:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
                         title="Excluir"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                     </div>
                   </td>
@@ -490,6 +499,7 @@ export default function Alunos() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

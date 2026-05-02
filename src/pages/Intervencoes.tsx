@@ -20,7 +20,9 @@ import {
   XCircle,
   Calendar,
   User,
-  TrendingUp
+  TrendingUp,
+  Phone,
+  MessageCircle
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
@@ -397,6 +399,44 @@ export default function Intervencoes() {
                             </Link>
                           )}
                         </div>
+
+                        {/* Contato do Responsável */}
+                        {(intervencao.aluno as any)?.nome_responsavel_1 && (
+                          <div className="mt-3 p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-0.5">
+                                👤 Responsável
+                              </p>
+                              <p className="text-sm text-emerald-800 dark:text-emerald-300 font-medium truncate">
+                                {(intervencao.aluno as any).nome_responsavel_1}
+                                {(intervencao.aluno as any).parentesco_responsavel_1 && (
+                                  <span className="text-xs font-normal text-emerald-600 dark:text-emerald-500 ml-1">
+                                    • {(intervencao.aluno as any).parentesco_responsavel_1}
+                                  </span>
+                                )}
+                              </p>
+                              {(intervencao.aluno as any).telefone_responsavel_1 && (
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                  {(intervencao.aluno as any).telefone_responsavel_1}
+                                </p>
+                              )}
+                            </div>
+                            {(intervencao.aluno as any).telefone_responsavel_1 && (
+                              <a
+                                href={`https://wa.me/${(intervencao.aluno as any).telefone_responsavel_1.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                  `Olá! Somos do SAPEE - Sistema de Alerta de Predição de Evasão Escolar. Gostaríamos de conversar sobre o(a) aluno(a) ${intervencao.aluno.nome}.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all text-xs font-bold shrink-0"
+                                title="Enviar WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                                WhatsApp
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 

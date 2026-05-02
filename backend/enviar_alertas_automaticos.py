@@ -102,24 +102,38 @@ def verificar_faltas_consecutivas(db: Session):
                 aluno = db.query(models.Aluno).filter(
                     models.Aluno.matricula == matricula
                 ).first()
-                
+
                 if aluno:
                     # Verificar se já não foi alertado nas últimas 24h
                     alerta_existente = db.query(models.AlertaFaltasConsecutivas).filter(
                         models.AlertaFaltasConsecutivas.aluno_matricula == matricula,
                         models.AlertaFaltasConsecutivas.criado_at >= datetime.now() - timedelta(hours=24)
                     ).first()
-                    
+
                     if not alerta_existente:
+                        # Calcular prazo baseado no tipo de alerta
+                        if consecutivas >= 10:
+                            tipo_alerta = '10_FALTAS'
+                            dias_prazo = 3  # Urgente
+                        elif consecutivas >= 5:
+                            tipo_alerta = '5_FALTAS'
+                            dias_prazo = 5  # Médio
+                        else:
+                            tipo_alerta = '3_FALTAS'
+                            dias_prazo = 7  # Baixo
+
+                        data_limite = datetime.now() + timedelta(days=dias_prazo)
+
                         # Criar alerta
                         novo_alerta = models.AlertaFaltasConsecutivas(
                             aluno_matricula=matricula,
-                            tipo_alerta='3_FALTAS',
+                            tipo_alerta=tipo_alerta,
                             quantidade_faltas=consecutivas,
                             data_inicio_faltas=faltas_ordenadas[-1].data,
                             data_fim_faltas=faltas_ordenadas[0].data,
                             disciplinas_afetadas=json.dumps(list(set([f.disciplina for f in faltas]))),
-                            status='PENDENTE'
+                            status='PENDENTE',
+                            data_limite=data_limite.date()
                         )
                         db.add(novo_alerta)
                         

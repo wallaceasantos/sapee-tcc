@@ -39,6 +39,18 @@ export default function IntervencaoModal({
   const [searching, setSearching] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<any>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Inicializar com valores das props
+  useEffect(() => {
+    if (isOpen) {
+      if (matriculaProp) setMatricula(matriculaProp);
+      if (alunoNome) setSearchTerm(alunoNome);
+      if (initialValues?.tipo) setTipo(initialValues.tipo);
+      if (initialValues?.descricao) setDescricao(initialValues.descricao);
+      if (initialValues?.status) setStatus(initialValues.status);
+      if (initialValues?.prioridade) setPrioridade(initialValues.prioridade);
+    }
+  }, [isOpen, matriculaProp, alunoNome, initialValues]);
   const searchTimeoutRef = useRef<NodeJS.Timeout>(undefined);
 
   const [tipo, setTipo] = useState(initialValues?.tipo || '');
@@ -46,15 +58,17 @@ export default function IntervencaoModal({
   const [status, setStatus] = useState<StatusIntervencao>(initialValues?.status || StatusIntervencao.PENDENTE);
   const [prioridade, setPrioridade] = useState<'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE'>(initialValues?.prioridade || 'MEDIA');
 
-  // Atualiza campos quando initialValues muda
+  // Inicializar com valores das props quando modal abre
   useEffect(() => {
-    if (initialValues) {
-      if (initialValues.tipo) setTipo(initialValues.tipo);
-      if (initialValues.descricao) setDescricao(initialValues.descricao);
-      if (initialValues.status) setStatus(initialValues.status);
-      if (initialValues.prioridade) setPrioridade(initialValues.prioridade);
+    if (isOpen) {
+      if (matriculaProp) setMatricula(matriculaProp);
+      if (alunoNome) setSearchTerm(alunoNome);
+      if (initialValues?.tipo) setTipo(initialValues.tipo);
+      if (initialValues?.descricao) setDescricao(initialValues.descricao);
+      if (initialValues?.status) setStatus(initialValues.status);
+      if (initialValues?.prioridade) setPrioridade(initialValues.prioridade);
     }
-  }, [initialValues]);
+  }, [isOpen, matriculaProp, alunoNome, initialValues]);
 
   // Busca alunos quando digita
   useEffect(() => {
@@ -105,8 +119,13 @@ export default function IntervencaoModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Se matricula não foi passada via prop, usar do estado
-    const matriculaFinal = matriculaProp || matricula;
+    // Usar matrícula: prop > estado > aluno selecionado
+    const matriculaFinal = matriculaProp || matricula || alunoSelecionado?.matricula;
+
+    if (!matriculaFinal) {
+      console.error('Matrícula não definida');
+      return;
+    }
 
     await onSave({
       tipo,
@@ -280,13 +299,20 @@ export default function IntervencaoModal({
                 </div>
               )}
 
-              {/* Aluno info (modo edição) */}
+              {/* Aluno info (quando passado via prop) */}
               {alunoNome && !alunoSelecionado && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800 flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    Registrando ação para: <strong className="text-blue-900 dark:text-blue-200">{alunoNome}</strong>
-                  </p>
+                  <div className="flex-1">
+                    <p className="text-sm text-blue-800 dark:text-blue-300">
+                      Registrando ação para: <strong className="text-blue-900 dark:text-blue-200">{alunoNome}</strong>
+                    </p>
+                    {matriculaProp && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        Matrícula: {matriculaProp}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 

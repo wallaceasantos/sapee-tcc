@@ -14,6 +14,8 @@ interface Alerta {
     matricula: string;
     nome: string;
     curso: string;
+    nome_responsavel_1?: string;
+    telefone_responsavel_1?: string;
   };
   risco_evasao: number;
   nivel_risco: string;
@@ -196,14 +198,35 @@ export function NotificationBell() {
                                 {alerta.risco_evasao.toFixed(0)}%
                               </span>
                             </div>
-                            
-                            <button
-                              onClick={() => enviarAlertaTelegram(alerta.aluno.matricula)}
-                              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold"
-                            >
-                              📱 Enviar Telegram
-                            </button>
+
+                            <div className="flex items-center gap-1.5">
+                              {alerta.aluno.telefone_responsavel_1 && (
+                                <a
+                                  href={`https://wa.me/${alerta.aluno.telefone_responsavel_1.replace(/\D/g, '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 font-semibold"
+                                  title="WhatsApp responsável"
+                                >
+                                  💬
+                                </a>
+                              )}
+                              <button
+                                onClick={() => enviarAlertaTelegram(alerta.aluno.matricula)}
+                                className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-semibold"
+                                title="Enviar Telegram"
+                              >
+                                📱
+                              </button>
+                            </div>
                           </div>
+
+                          {alerta.aluno.nome_responsavel_1 && (
+                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                              👤 {alerta.aluno.nome_responsavel_1}
+                              {alerta.aluno.telefone_responsavel_1 && ` • ${alerta.aluno.telefone_responsavel_1}`}
+                            </p>
+                          )}
                           
                           {alerta.fatores_principais && (
                             <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">

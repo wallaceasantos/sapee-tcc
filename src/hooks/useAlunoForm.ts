@@ -69,6 +69,15 @@ export interface AlunoFormData {
   // Vulnerabilidade
   beneficiario_bolsa_familia: boolean;
   primeiro_geracao_universidade: boolean;
+
+  // Dados dos Responsáveis
+  nome_responsavel_1: string;
+  parentesco_responsavel_1: string;
+  telefone_responsavel_1: string;
+  email_responsavel_1: string;
+  nome_responsavel_2: string;
+  parentesco_responsavel_2: string;
+  telefone_responsavel_2: string;
 }
 
 // Estado inicial do formulário
@@ -125,6 +134,15 @@ const initialFormData: AlunoFormData = {
   // Vulnerabilidade
   beneficiario_bolsa_familia: false,
   primeiro_geracao_universidade: false,
+
+  // Dados dos Responsáveis
+  nome_responsavel_1: '',
+  parentesco_responsavel_1: '',
+  telefone_responsavel_1: '',
+  email_responsavel_1: '',
+  nome_responsavel_2: '',
+  parentesco_responsavel_2: '',
+  telefone_responsavel_2: '',
 };
 
 // Interface de retorno do hook
@@ -495,6 +513,13 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
       possui_internet: aluno.possui_internet || false,
       beneficiario_bolsa_familia: aluno.beneficiario_bolsa_familia || false,
       primeiro_geracao_universidade: aluno.primeiro_geracao_universidade || false,
+      nome_responsavel_1: aluno.nome_responsavel_1 || '',
+      parentesco_responsavel_1: aluno.parentesco_responsavel_1 || '',
+      telefone_responsavel_1: aluno.telefone_responsavel_1 || '',
+      email_responsavel_1: aluno.email_responsavel_1 || '',
+      nome_responsavel_2: aluno.nome_responsavel_2 || '',
+      parentesco_responsavel_2: aluno.parentesco_responsavel_2 || '',
+      telefone_responsavel_2: aluno.telefone_responsavel_2 || '',
     });
     setIsEditing(true);
     setPredicaoPreview(null);

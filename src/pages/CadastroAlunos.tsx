@@ -15,7 +15,7 @@ import {
   User, GraduationCap, Mail, Phone, MapPin, Calendar,
   DollarSign, Briefcase, BookOpen, AlertCircle, CheckCircle,
   Save, X, ChevronLeft, Search, Filter, Edit, Trash2,
-  TrendingUp, Percent, History, Home, Heart, Loader2
+  TrendingUp, Percent, History, Home, Heart, Loader2, Users
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { cn } from '../utils';
@@ -1378,6 +1378,119 @@ function FormModal({
                     Possui internet em casa
                   </span>
                 </label>
+              </div>
+            </section>
+
+            {/* Dados dos Responsáveis */}
+            <section className="border-t border-gray-200 dark:border-slate-800 pt-6 mt-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-600" />
+                Dados dos Responsáveis
+              </h3>
+
+              <div className="space-y-6">
+                {/* 1º Responsável */}
+                <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl space-y-4">
+                  <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300">1º Responsável</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Nome</label>
+                      <input
+                        type="text"
+                        name="nome_responsavel_1"
+                        value={formData.nome_responsavel_1 || ''}
+                        onChange={handleInputChange}
+                        placeholder="Nome completo do responsável"
+                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Parentesco</label>
+                      <select
+                        name="parentesco_responsavel_1"
+                        value={formData.parentesco_responsavel_1 || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
+                      >
+                        <option value="">Selecione</option>
+                        <option value="Mãe">Mãe</option>
+                        <option value="Pai">Pai</option>
+                        <option value="Avó">Avó</option>
+                        <option value="Avô">Avô</option>
+                        <option value="Tio(a)">Tio(a)</option>
+                        <option value="Outro">Outro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Telefone</label>
+                      <input
+                        type="text"
+                        name="telefone_responsavel_1"
+                        value={formData.telefone_responsavel_1 || ''}
+                        onChange={handleInputChange}
+                        placeholder="(92) 99999-9999"
+                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">E-mail</label>
+                      <input
+                        type="email"
+                        name="email_responsavel_1"
+                        value={formData.email_responsavel_1 || ''}
+                        onChange={handleInputChange}
+                        placeholder="email@exemplo.com"
+                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2º Responsável */}
+                <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl space-y-4">
+                  <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300">2º Responsável (Opcional)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Nome</label>
+                      <input
+                        type="text"
+                        name="nome_responsavel_2"
+                        value={formData.nome_responsavel_2 || ''}
+                        onChange={handleInputChange}
+                        placeholder="Nome completo do responsável"
+                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Parentesco</label>
+                      <select
+                        name="parentesco_responsavel_2"
+                        value={formData.parentesco_responsavel_2 || ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
+                      >
+                        <option value="">Selecione</option>
+                        <option value="Mãe">Mãe</option>
+                        <option value="Pai">Pai</option>
+                        <option value="Avó">Avó</option>
+                        <option value="Avô">Avô</option>
+                        <option value="Tio(a)">Tio(a)</option>
+                        <option value="Outro">Outro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Telefone</label>
+                      <input
+                        type="text"
+                        name="telefone_responsavel_2"
+                        value={formData.telefone_responsavel_2 || ''}
+                        onChange={handleInputChange}
+                        placeholder="(92) 99999-9999"
+                        className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
           </form>

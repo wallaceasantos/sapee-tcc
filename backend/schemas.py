@@ -203,6 +203,15 @@ class AlunoBase(BaseModel):
     beneficiario_bolsa_familia: Optional[bool] = False
     primeiro_geracao_universidade: Optional[bool] = False
 
+    # Dados dos Responsáveis
+    nome_responsavel_1: Optional[str] = None
+    parentesco_responsavel_1: Optional[str] = None
+    telefone_responsavel_1: Optional[str] = None
+    email_responsavel_1: Optional[EmailStr] = None
+    nome_responsavel_2: Optional[str] = None
+    parentesco_responsavel_2: Optional[str] = None
+    telefone_responsavel_2: Optional[str] = None
+
     # Questionário Psicossocial
     questionario_respondido: Optional[bool] = False
     data_ultimo_questionario: Optional[datetime] = None
@@ -555,19 +564,55 @@ class AlertaFaltasConsecutivasBase(BaseModel):
     disciplinas_afetadas: Optional[str] = None  # JSON string
 
 class AlertaFaltasConsecutivasCreate(AlertaFaltasConsecutivasBase):
-    pass
+    responsavel_id: Optional[int] = None
+    data_limite: Optional[date] = None
+    contato_responsavel_data: Optional[date] = None
+    contato_responsavel_meio: Optional[str] = None
+    contato_responsavel_obs: Optional[str] = None
 
 class AlertaFaltasConsecutivasUpdate(BaseModel):
     status: Optional[str] = None
     acoes_tomadas: Optional[str] = None
     data_resolucao: Optional[date] = None
+    responsavel_id: Optional[int] = None
+    data_limite: Optional[date] = None
+    contato_responsavel_data: Optional[date] = None
+    contato_responsavel_meio: Optional[str] = None
+    contato_responsavel_obs: Optional[str] = None
 
 class AlertaFaltasConsecutivasResponse(AlertaFaltasConsecutivasBase):
     id: int
     status: str
     acoes_tomadas: Optional[str] = None
+    responsavel_id: Optional[int] = None
+    data_limite: Optional[date] = None
+    contato_responsavel_data: Optional[date] = None
+    contato_responsavel_meio: Optional[str] = None
+    contato_responsavel_obs: Optional[str] = None
     resolvido_por: Optional[int] = None
     data_resolucao: Optional[date] = None
+    criado_at: datetime
+
+    # Relacionamentos
+    aluno: Optional[AlunoResponse] = None
+    responsavel: Optional['UsuarioResponse'] = None
+    historico: Optional[List['AlertaFaltasHistoricoResponse']] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================
+# HISTÓRICO DE ALERTAS
+# ============================================
+
+class AlertaFaltasHistoricoResponse(BaseModel):
+    """Resposta de histórico de alerta"""
+    id: int
+    alerta_id: int
+    acao: str
+    descricao: str
+    usuario_id: Optional[int] = None
+    usuario: Optional['UsuarioResponse'] = None
     criado_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

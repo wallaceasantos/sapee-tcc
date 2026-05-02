@@ -894,7 +894,12 @@ export default function AlunosMonitoramento() {
                       <p className="text-sm font-medium text-gray-700 dark:text-slate-300 truncate max-w-50 sm:max-w-none">
                         {int.aluno?.nome || int.aluno_id}
                       </p>
-                      
+                      {int.usuario?.nome && (
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                          👤 Criado por: {int.usuario.nome}
+                        </p>
+                      )}
+
                       {/* Tags de Fatores de Risco */}
                       {tags.length > 0 && (
                         <div className="flex items-center gap-1.5 mt-1 overflow-x-auto pb-1">

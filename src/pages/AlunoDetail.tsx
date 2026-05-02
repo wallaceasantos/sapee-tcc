@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, User, GraduationCap, Wallet, MapPin, AlertCircle, TrendingDown, Calendar, ClipboardList, CheckCircle2, Clock, AlertTriangle, Loader2, TrendingUp, TrendingDown as TrendingDownIcon, XCircle, CheckCircle } from 'lucide-react';
+import { ChevronLeft, User, GraduationCap, Wallet, MapPin, AlertCircle, TrendingDown, Calendar, ClipboardList, CheckCircle2, Clock, AlertTriangle, Loader2, TrendingUp, TrendingDown as TrendingDownIcon, XCircle, CheckCircle, Users } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'motion/react';
 import { cn, getRiscoColor } from '../utils';
@@ -372,6 +372,38 @@ export default function AlunoDetail() {
               <InfoItem label="Possui Internet" value={aluno.possui_internet ? 'Sim' : 'Não'} />
               <InfoItem label="Bolsa Família" value={aluno.beneficiario_bolsa_familia ? 'Sim' : 'Não'} />
               <InfoItem label="1ª Geração Universidade" value={aluno.primeiro_geracao_universidade ? 'Sim' : 'Não'} />
+            </div>
+          </InfoCard>
+
+          {/* Dados dos Responsáveis */}
+          <InfoCard title="👥 Dados dos Responsáveis" icon={Users}>
+            <div className="space-y-4">
+              {/* 1º Responsável */}
+              <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl">
+                <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">1º Responsável</h4>
+                {aluno.nome_responsavel_1 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <InfoItem label="Nome" value={aluno.nome_responsavel_1} />
+                    <InfoItem label="Parentesco" value={aluno.parentesco_responsavel_1 || 'Não informado'} />
+                    <InfoItem label="Telefone" value={aluno.telefone_responsavel_1 || 'Não informado'} />
+                    <InfoItem label="E-mail" value={aluno.email_responsavel_1 || 'Não informado'} />
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 dark:text-slate-500">Nenhum responsável cadastrado. <Link to={`/alunos/${aluno.matricula}/editar`} className="text-blue-600 dark:text-blue-400 hover:underline">Editar aluno</Link> para adicionar.</p>
+                )}
+              </div>
+
+              {/* 2º Responsável */}
+              {aluno.nome_responsavel_2 && (
+                <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl">
+                  <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300 mb-2">2º Responsável</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <InfoItem label="Nome" value={aluno.nome_responsavel_2} />
+                    <InfoItem label="Parentesco" value={aluno.parentesco_responsavel_2 || 'Não informado'} />
+                    <InfoItem label="Telefone" value={aluno.telefone_responsavel_2 || 'Não informado'} />
+                  </div>
+                </div>
+              )}
             </div>
           </InfoCard>
 

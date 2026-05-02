@@ -11,20 +11,20 @@ import AlunoDetail from './pages/AlunoDetail';
 import CadastroAlunos from './pages/CadastroAlunos';
 import ImportarDados from './pages/ImportarDados';
 import Relatorios from './pages/Relatorios';
+import RelatorioEficacia from './pages/RelatorioEficacia';
+import RelatoriosGerenciais from './pages/RelatoriosGerenciais';
+import CentralRelatorios from './pages/CentralRelatorios';
 import AuditLogs from './pages/AuditLogs';
 import Usuarios from './pages/Usuarios';
 import Perfil from './pages/Perfil';
-import LancarFrequencia from './pages/LancarFrequencia';
 import Login from './pages/Login';
 import Intervencoes from './pages/Intervencoes';
 import AlunosEmRisco from './pages/AlunosEmRisco';
 import AlunosMonitoramento from './pages/AlunosMonitoramento';
-import RelatorioEficacia from './pages/RelatorioEficacia';
 import IndicadoresEficacia from './pages/IndicadoresEficacia';
 import PlanosAcao from './pages/PlanosAcao';
 import LancarFaltas from './pages/LancarFaltas';
 import AlertasFaltas from './pages/AlertasFaltas';
-import RelatoriosGerenciais from './pages/RelatoriosGerenciais';
 import QuestionarioPsicossocial from './pages/QuestionarioPsicossocial';
 import QuestionarioPublico from './pages/QuestionarioPublico';
 import GestaoTokens from './pages/GestaoTokens';
@@ -73,15 +73,14 @@ export default function App() {
                         {/* Rotas Legadas (mantidas para compatibilidade) */}
                         <Route path="/aluno/:matricula" element={<AlunoDetail />} />
                         <Route path="/cadastro" element={<CadastroAlunos />} />
-                        
-                        <Route path="/frequencia" element={<LancarFrequencia />} />
-                        <Route path="/faltas/lancar" element={<LancarFaltas />} />
+
+                        <Route path="/faltas" element={<LancarFaltas />} />
                         <Route path="/faltas/alertas" element={<AlertasFaltas />} />
                         <Route path="/importar" element={<ImportarDados />} />
-                        <Route path="/relatorios" element={<Relatorios />} />
-                        <Route path="/relatorios-gerenciais" element={<RelatoriosGerenciais />} />
-                        <Route path="/relatorio-eficacia" element={<RelatorioEficacia />} />
-                        <Route path="/indicadores-eficacia" element={<IndicadoresEficacia />} />
+                        <Route path="/relatorios" element={<CentralRelatorios />} />
+                        <Route path="/relatorios-gerenciais" element={<Navigate to="/relatorios" replace />} />
+                        <Route path="/relatorio-eficacia" element={<Navigate to="/relatorios" replace />} />
+                        <Route path="/indicadores-eficacia" element={<Navigate to="/relatorios" replace />} />
                         <Route path="/planos-acao" element={<PlanosAcao />} />
                         <Route path="/intervencoes" element={<Intervencoes />} />
                         <Route path="/alunos-em-risco" element={<AlunosEmRisco />} />

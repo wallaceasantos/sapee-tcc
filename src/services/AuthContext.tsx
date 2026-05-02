@@ -254,16 +254,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     switch (user.role) {
       case 'COORDENADOR':
         if (recurso === 'logs' || recurso === 'usuarios') return false;
-        if (recurso === 'frequencia') return true; // COORDENADOR pode lançar frequência
         return true;
       case 'PEDAGOGO':
         if (recurso === 'alunos' && acao === 'delete') return false;
         if (recurso === 'importar' || recurso === 'usuarios') return false;
-        if (recurso === 'frequencia') return false; // PEDAGOGO não lança frequência
         return true;
       case 'DIRETOR':
         if (recurso === 'usuarios' || recurso === 'configuracoes') return false;
-        if (recurso === 'frequencia') return false; // DIRETOR não lança frequência
         return true;
       default:
         return false;
