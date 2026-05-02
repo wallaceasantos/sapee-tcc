@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, User, FileUp, BarChart3, GraduationCap, Menu, X, LogOut, Bell, Moon, Sun, Search, ChevronRight, AlertCircle, History, UserCircle, Shield, Calendar, TrendingUp, Heart, Target, AlertTriangle, FileText, ClipboardList, PieChart, Key, LogOut as LogOutIcon, Eye } from 'lucide-react';
+import { LayoutDashboard, Users, User, FileUp, BarChart3, GraduationCap, Menu, X, LogOut, Bell, Moon, Sun, Search, ChevronRight, ChevronLeft, AlertCircle, History, UserCircle, Shield, Calendar, TrendingUp, Heart, Target, AlertTriangle, FileText, ClipboardList, PieChart, Key, LogOut as LogOutIcon, Eye } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import HelpDrawer from './HelpDrawer';
 import OnboardingTour from './OnboardingTour';
@@ -53,6 +53,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('sapee_theme') === 'dark');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem('sapee_sidebar') === 'collapsed');
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   
   // Estados para Ajuda e Tour
@@ -110,6 +111,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [isDarkMode]);
 
+  const toggleSidebar = () => {
+    const newState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newState);
+    localStorage.setItem('sapee_sidebar', newState ? 'collapsed' : 'expanded');
+  };
+
   const handleLogout = () => {
     logAction('Logout', 'Usuário encerrou a sessão');
     logout();
@@ -130,18 +137,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex flex-col md:flex-row transition-colors duration-300">
       {/* Sidebar Desktop */}
-      <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 sticky top-0 h-screen z-40">
-        <div className="p-8 flex items-center gap-3">
-          <div className="bg-emerald-600 p-2.5 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none rotate-3">
-            <GraduationCap className="text-white w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="font-black text-2xl text-gray-900 dark:text-white tracking-tight leading-none">SAPEE</h1>
-            <span className="text-xs font-bold text-emerald-600 uppercase tracking-[0.2em]">DEWAS</span>
-          </div>
+      <aside className={cn(
+        "hidden md:flex flex-col bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 sticky top-0 h-screen z-40 transition-all duration-300",
+        isSidebarCollapsed ? "w-20" : "w-72"
+      )}>
+        <div className={cn(
+          "flex items-center border-b border-gray-100 dark:border-slate-800",
+          isSidebarCollapsed ? "p-4 justify-center" : "p-8 gap-3"
+        )}>
+          {!isSidebarCollapsed && (
+            <>
+              <div className="bg-emerald-600 p-2.5 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none rotate-3">
+                <GraduationCap className="text-white w-7 h-7" />
+              </div>
+              <div>
+                <h1 className="font-black text-2xl text-gray-900 dark:text-white tracking-tight leading-none">SAPEE</h1>
+                <span className="text-xs font-bold text-emerald-600 uppercase tracking-[0.2em]">DEWAS</span>
+              </div>
+            </>
+          )}
+          {isSidebarCollapsed && (
+            <div className="bg-emerald-600 p-2 rounded-xl rotate-3">
+              <GraduationCap className="text-white w-6 h-6" />
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto max-h-[calc(100vh-200px)]">
+        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] overflow-x-hidden">
           {navItems.map((item, index) => {
             const isActive = location.pathname === item.path;
 
@@ -156,19 +178,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <Link
                       to={item.path}
                       className={cn(
-                        "flex items-center gap-3 px-5 py-4 rounded-[1.25rem] transition-all duration-300 group relative overflow-hidden",
+                        "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                        isSidebarCollapsed ? "justify-center px-0" : "",
                         isActive
                           ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold shadow-sm"
                           : "text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white"
                       )}
+                      title={isSidebarCollapsed ? item.label : ""}
                     >
-                      <item.icon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-slate-500")} />
-                      <span className="flex-1">{item.label}</span>
-                      {isActive && (
-                        <motion.div
-                          layoutId="active-pill"
-                          className="absolute left-0 w-1.5 h-6 bg-emerald-600 rounded-r-full"
-                        />
+                      <item.icon className={cn("w-5 h-5 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-slate-500")} />
+                      {!isSidebarCollapsed && (
+                        <>
+                          <span className="flex-1 truncate">{item.label}</span>
+                          {isActive && (
+                            <motion.div
+                              layoutId="active-pill"
+                              className="absolute left-0 w-1.5 h-6 bg-emerald-600 rounded-r-full"
+                            />
+                          )}
+                        </>
                       )}
                     </Link>
                   </CanAccess>
@@ -181,27 +209,61 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-3 px-5 py-4 rounded-[1.25rem] transition-all duration-300 group relative overflow-hidden",
+                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                  isSidebarCollapsed ? "justify-center px-0" : "",
                   isActive
                     ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold shadow-sm"
                     : "text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white"
                 )}
+                title={isSidebarCollapsed ? item.label : ""}
               >
-                <item.icon className={cn("w-5 h-5 transition-transform duration-300 group-hover:scale-110", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-slate-500")} />
-                <span className="flex-1">{item.label}</span>
-                {isActive && (
-                  <motion.div
-                    layoutId="active-pill"
-                    className="absolute left-0 w-1.5 h-6 bg-emerald-600 rounded-r-full"
-                  />
+                <item.icon className={cn("w-5 h-5 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-slate-500")} />
+                {!isSidebarCollapsed && (
+                  <>
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {isActive && (
+                      <motion.div
+                        layoutId="active-pill"
+                        className="absolute left-0 w-1.5 h-6 bg-emerald-600 rounded-r-full"
+                      />
+                    )}
+                  </>
                 )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-6 border-t border-gray-100 dark:border-slate-800">
-          <UserProfile />
+        <div className={cn(
+          "border-t border-gray-100 dark:border-slate-800 relative",
+          isSidebarCollapsed ? "p-4 flex flex-col items-center gap-4" : "p-6"
+        )}>
+          {!isSidebarCollapsed ? (
+            <>
+              <UserProfile />
+              <button
+                onClick={toggleSidebar}
+                className="absolute -right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg shadow-emerald-600/30 transition-all z-50 hover:scale-110"
+                title="Recolher Menu"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <>
+               <div className="w-12 h-12 bg-linear-to-br from-emerald-500 to-blue-500 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-emerald-500/20">
+                  {user?.nome ? user.nome.charAt(0).toUpperCase() : <User className="w-6 h-6" />}
+               </div>
+               <button
+                  onClick={toggleSidebar}
+                  className="w-full py-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all font-bold text-sm shadow-sm hover:shadow-md hover:scale-105 flex items-center justify-center gap-2"
+                  title="Expandir Menu"
+               >
+                  <ChevronRight className="w-5 h-5" />
+                  <span>Menu</span>
+               </button>
+            </>
+          )}
         </div>
       </aside>
 
