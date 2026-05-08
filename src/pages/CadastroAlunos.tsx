@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { cn } from '../utils';
+import { formatarTelefone, limparTelefone, validarTelefone } from '../utils/telefone';
 import { NivelRisco } from '../types';
 import { RiskBadge, RiskProgressBar, EmptyState, ConfirmationModal } from '../components/ui';
 import { useToast } from '../components/ui/Toast';
@@ -696,12 +697,20 @@ function FormModal({
                     type="tel"
                     name="telefone"
                     value={formData.telefone}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      const formatted = formatarTelefone(e.target.value);
+                      handleInputChange({ ...e, target: { ...e.target, name: 'telefone', value: formatted } });
+                    }}
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700
                                rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all
                                text-gray-900 dark:text-white"
-                    placeholder="Ex: 92999999999"
+                    placeholder="(92) 99999-9999"
                   />
+                  {formData.telefone && !validarTelefone(formData.telefone) && (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      ⚠️ Telefone deve ter 10 ou 11 dígitos
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1424,13 +1433,21 @@ function FormModal({
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Telefone</label>
                       <input
-                        type="text"
+                        type="tel"
                         name="telefone_responsavel_1"
                         value={formData.telefone_responsavel_1 || ''}
-                        onChange={handleInputChange}
+                        onChange={(e) => {
+                          const formatted = formatarTelefone(e.target.value);
+                          handleInputChange({ ...e, target: { ...e.target, name: 'telefone_responsavel_1', value: formatted } });
+                        }}
                         placeholder="(92) 99999-9999"
                         className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
                       />
+                      {formData.telefone_responsavel_1 && !validarTelefone(formData.telefone_responsavel_1) && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                          ⚠️ Telefone deve ter 10 ou 11 dígitos
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">E-mail</label>
@@ -1481,13 +1498,21 @@ function FormModal({
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Telefone</label>
                       <input
-                        type="text"
+                        type="tel"
                         name="telefone_responsavel_2"
                         value={formData.telefone_responsavel_2 || ''}
-                        onChange={handleInputChange}
+                        onChange={(e) => {
+                          const formatted = formatarTelefone(e.target.value);
+                          handleInputChange({ ...e, target: { ...e.target, name: 'telefone_responsavel_2', value: formatted } });
+                        }}
                         placeholder="(92) 99999-9999"
                         className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg"
                       />
+                      {formData.telefone_responsavel_2 && !validarTelefone(formData.telefone_responsavel_2) && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                          ⚠️ Telefone deve ter 10 ou 11 dígitos
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

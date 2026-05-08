@@ -55,6 +55,55 @@ class Sexo(str, Enum):
     F = "F"
     O = "O"
 
+class SituacaoNota(str, Enum):
+    APROVADO = "APROVADO"
+    REPROVADO = "REPROVADO"
+    CURSANDO = "CURSANDO"
+
+class TipoAtendimento(str, Enum):
+    PSICOLOGICO = "PSICOLOGICO"
+    SOCIAL = "SOCIAL"
+    DISCIPLINAR = "DISCIPLINAR"
+    ACADEMICO = "ACADEMICO"
+    SAUDE = "SAUDE"
+    ENCAMINHAMENTO_EXTERNO = "ENCAMINHAMENTO_EXTERNO"
+    CONVERSA_INFORMAL = "CONVERSA_INFORMAL"
+
+class StatusAtendimento(str, Enum):
+    AGENDADO = "AGENDADO"
+    REALIZADO = "REALIZADO"
+    CANCELADO = "CANCELADO"
+    EM_ANDAMENTO = "EM_ANDAMENTO"
+    CONCLUIDO = "CONCLUIDO"
+
+class DestinatarioTipo(str, Enum):
+    RESPONSAVEL = "RESPONSAVEL"
+    ALUNO = "ALUNO"
+    COORDENADOR = "COORDENADOR"
+    PROFESSOR = "PROFESSOR"
+
+class CanalComunicacao(str, Enum):
+    WHATSAPP = "WHATSAPP"
+    SMS = "SMS"
+    EMAIL = "EMAIL"
+    SISTEMA = "SISTEMA"
+
+class TipoComunicacao(str, Enum):
+    FALTAS = "FALTAS"
+    RISCO = "RISCO"
+    ATENDIMENTO = "ATENDIMENTO"
+    LEMBRETE = "LEMBRETE"
+    MANUAL = "MANUAL"
+    ENCAMINHAMENTO = "ENCAMINHAMENTO"
+
+class StatusComunicacao(str, Enum):
+    PENDENTE = "PENDENTE"
+    ENVIADA = "ENVIADA"
+    ENTREGUE = "ENTREGUE"
+    LIDA = "LIDA"
+    FALHA = "FALHA"
+    CANCELADA = "CANCELADA"
+
 # ============================================
 # TOKEN & AUTH
 # ============================================
@@ -857,6 +906,236 @@ class EgressoStatsResponse(BaseModel):
     percentual_predicao_correta: float
 
 # ============================================
+# DISCIPLINAS
+# ============================================
+
+class DisciplinaBase(BaseModel):
+    nome: str = Field(..., min_length=2, max_length=100)
+    ativa: bool = True
+    curso_id: Optional[int] = None
+
+class DisciplinaCreate(DisciplinaBase):
+    pass
+
+class DisciplinaUpdate(BaseModel):
+    nome: Optional[str] = None
+    ativa: Optional[bool] = None
+    curso_id: Optional[int] = None
+
+class DisciplinaResponse(DisciplinaBase):
+    id: int
+    criado_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================
+# NOTAS POR DISCIPLINA
+# ============================================
+
+class NotaDisciplinaBase(BaseModel):
+    disciplina: str = Field(..., min_length=2, max_length=100)
+    disciplina_id: Optional[int] = None
+    periodo_letivo: str = Field(..., min_length=4, max_length=20, description="Ex: 2024-1, 2024-2")
+    bimestre: int = Field(..., ge=1, le=4, description="Bimestre ou semestre (1-4)")
+    nota: float = Field(..., ge=0, le=10, description="Nota de 0 a 10")
+    faltas_disciplina: int = Field(default=0, ge=0, description="Faltas nesta disciplina")
+    situacao: SituacaoNota = SituacaoNota.CURSANDO
+
+class NotaDisciplinaCreate(NotaDisciplinaBase):
+    pass
+
+class NotaDisciplinaUpdate(BaseModel):
+    disciplina: Optional[str] = None
+    disciplina_id: Optional[int] = None
+    periodo_letivo: Optional[str] = None
+    bimestre: Optional[int] = None
+    nota: Optional[float] = None
+    faltas_disciplina: Optional[int] = None
+    situacao: Optional[SituacaoNota] = None
+
+class NotaDisciplinaResponse(NotaDisciplinaBase):
+    id: int
+    aluno_matricula: str
+    criado_at: Optional[datetime] = None
+    atualizado_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================
+# ATENDIMENTOS / OCORRÊNCIAS
+# ============================================
+
+class AtendimentoBase(BaseModel):
+    tipo_atendimento: TipoAtendimento
+    status: StatusAtendimento = StatusAtendimento.AGENDADO
+    data_atendimento: date
+    hora_inicio: Optional[str] = None
+    hora_fim: Optional[str] = None
+    local: Optional[str] = None
+    descricao: str = Field(..., min_length=10, max_length=2000)
+    observacoes: Optional[str] = None
+    necessita_encaminhamento: Optional[bool] = False
+    status_encaminhamento: Optional[str] = None
+    tipo_encaminhamento: Optional[str] = None
+    data_encaminhamento: Optional[date] = None
+    necessita_followup: Optional[bool] = False
+    data_proximo_atendimento: Optional[date] = None
+    prioridade: str = "MEDIA"
+
+class AtendimentoCreate(AtendimentoBase):
+    usuario_id: Optional[int] = None  # Será preenchido pelo backend via token
+
+class AtendimentoUpdate(BaseModel):
+    tipo_atendimento: Optional[TipoAtendimento] = None
+    status: Optional[StatusAtendimento] = None
+    data_atendimento: Optional[date] = None
+    hora_inicio: Optional[str] = None
+    hora_fim: Optional[str] = None
+    local: Optional[str] = None
+    descricao: Optional[str] = None
+    observacoes: Optional[str] = None
+    necessita_encaminhamento: Optional[bool] = None
+    tipo_encaminhamento: Optional[str] = None
+    data_encaminhamento: Optional[date] = None
+    necessita_followup: Optional[bool] = None
+    data_proximo_atendimento: Optional[date] = None
+    prioridade: Optional[str] = None
+
+class AtendimentoResponse(AtendimentoBase):
+    id: int
+    aluno_matricula: str
+    usuario_id: int
+    criado_at: Optional[datetime] = None
+    atualizado_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class AtendimentoStats(BaseModel):
+    total: int
+    por_tipo: dict
+    por_status: dict
+    por_prioridade: dict
+    com_encaminhamento: int
+    com_followup: int
+
+
+# ============================================
+# HISTÓRICO DE ENCAMINHAMENTOS
+# ============================================
+
+class HistoricoEncaminhamentoBase(BaseModel):
+    atendimento_id: int
+    usuario_id: int
+    status_anterior: Optional[str] = None
+    status_novo: str
+    observacoes: Optional[str] = None
+    data_mudanca: Optional[datetime] = None
+
+class HistoricoEncaminhamentoResponse(HistoricoEncaminhamentoBase):
+    id: int
+    usuario: Optional[str] = None  # Nome do profissional
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================
+# COMUNICAÇÕES
+# ============================================
+
+class TemplateComunicacaoBase(BaseModel):
+    codigo: str = Field(..., min_length=3, max_length=50)
+    nome: str = Field(..., min_length=3, max_length=100)
+    tipo_comunicacao: TipoComunicacao
+    canal: CanalComunicacao = CanalComunicacao.SISTEMA
+    assunto: Optional[str] = None
+    conteudo: str = Field(..., min_length=10)
+    ativo: bool = True
+
+class TemplateComunicacaoCreate(TemplateComunicacaoBase):
+    pass
+
+class TemplateComunicacaoUpdate(BaseModel):
+    nome: Optional[str] = None
+    assunto: Optional[str] = None
+    conteudo: Optional[str] = None
+    ativo: Optional[bool] = None
+
+class TemplateComunicacaoResponse(TemplateComunicacaoBase):
+    id: int
+    criado_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ComunicacaoBase(BaseModel):
+    aluno_matricula: str
+    destinatario_tipo: DestinatarioTipo
+    destinatario_nome: str
+    destinatario_contato: Optional[str] = None
+    tipo_comunicacao: TipoComunicacao
+    canal: CanalComunicacao = CanalComunicacao.SISTEMA
+    assunto: Optional[str] = None
+    mensagem: str = Field(..., min_length=5)
+    template_id: Optional[str] = None
+    eh_lembrete: bool = False
+    data_agendada: Optional[datetime] = None
+
+class ComunicacaoCreate(ComunicacaoBase):
+    usuario_id: Optional[int] = None
+
+class ComunicacaoUpdate(BaseModel):
+    status: Optional[StatusComunicacao] = None
+    data_leitura: Optional[datetime] = None
+    erro_motivo: Optional[str] = None
+    recebeu_resposta: Optional[bool] = None
+    resposta_conteudo: Optional[str] = None
+    data_resposta: Optional[datetime] = None
+    data_envio_efetivo: Optional[datetime] = None
+
+class ComunicacaoResponse(ComunicacaoBase):
+    id: int
+    status: StatusComunicacao
+    data_envio: Optional[datetime] = None
+    data_leitura: Optional[datetime] = None
+    data_envio_efetivo: Optional[datetime] = None
+    criado_at: Optional[datetime] = None
+    atualizado_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ComunicacaoStats(BaseModel):
+    total: int
+    por_tipo: dict
+    por_canal: dict
+    por_status: dict
+    pendentes: int
+    falhas: int
+    lembretes_hoje: int
+
+
+# ============================================
+# CONFIGURAÇÕES DO SISTEMA
+# ============================================
+
+class ConfiguracaoSistemaBase(BaseModel):
+    chave: str = Field(..., max_length=50)
+    valor: Optional[str] = None
+    descricao: Optional[str] = None
+
+class ConfiguracaoSistemaUpdate(BaseModel):
+    valor: str
+
+class ConfiguracaoSistemaResponse(ConfiguracaoSistemaBase):
+    id: int
+    criado_at: Optional[datetime] = None
+    atualizado_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================
 # RESPONSE GENÉRICAS
 # ============================================
 
@@ -870,6 +1149,33 @@ class PaginatedResponse(BaseModel):
     page: int
     per_page: int
     pages: int
+
+
+# ============================================
+# DISCIPLINA PROFESSOR
+# ============================================
+
+class DisciplinaProfessorBase(BaseModel):
+    """Base para vínculo professor-disciplina"""
+    usuario_id: int
+    disciplina_id: int
+    curso_id: Optional[int] = None
+
+
+class DisciplinaProfessorCreate(DisciplinaProfessorBase):
+    """Schema para criar vínculo"""
+    pass
+
+
+class DisciplinaProfessorResponse(BaseModel):
+    """Resposta com dados do vínculo"""
+    id: int
+    usuario_id: int
+    disciplina_id: int
+    curso_id: Optional[int] = None
+    criado_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 # Forward references para tipos circulares
 AlunoResponse.model_rebuild()

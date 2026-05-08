@@ -22,14 +22,20 @@ import Intervencoes from './pages/Intervencoes';
 import AlunosEmRisco from './pages/AlunosEmRisco';
 import AlunosMonitoramento from './pages/AlunosMonitoramento';
 import IndicadoresEficacia from './pages/IndicadoresEficacia';
+import ValidacaoModelo from './pages/ValidacaoModelo';
+import Atendimentos from './pages/Atendimentos';
+import CentralComunicacoes from './pages/CentralComunicacoes';
+import Configuracoes from './pages/Configuracoes';
 import PlanosAcao from './pages/PlanosAcao';
 import LancarFaltas from './pages/LancarFaltas';
 import AlertasFaltas from './pages/AlertasFaltas';
+import Disciplinas from './pages/Disciplinas';
 import QuestionarioPsicossocial from './pages/QuestionarioPsicossocial';
 import QuestionarioPublico from './pages/QuestionarioPublico';
 import GestaoTokens from './pages/GestaoTokens';
 import Egressos from './pages/Egressos';
 import DashboardQuestionario from './pages/DashboardQuestionario';
+import NotasDisciplina from './pages/NotasDisciplina';
 
 /**
  * MAPEAMENTO DE ROTAS - Módulo Alunos
@@ -76,11 +82,15 @@ export default function App() {
 
                         <Route path="/faltas" element={<LancarFaltas />} />
                         <Route path="/faltas/alertas" element={<AlertasFaltas />} />
+                        <Route path="/disciplinas" element={<Disciplinas />} />
+                        <Route path="/notas" element={<NotasDisciplina />} />
                         <Route path="/importar" element={<ImportarDados />} />
                         <Route path="/relatorios" element={<CentralRelatorios />} />
-                        <Route path="/relatorios-gerenciais" element={<Navigate to="/relatorios" replace />} />
-                        <Route path="/relatorio-eficacia" element={<Navigate to="/relatorios" replace />} />
-                        <Route path="/indicadores-eficacia" element={<Navigate to="/relatorios" replace />} />
+                        <Route path="/indicadores-eficacia" element={<IndicadoresEficacia />} />
+                        <Route path="/validacao-modelo" element={<ValidacaoModelo />} />
+                        <Route path="/atendimentos" element={<Atendimentos />} />
+                        <Route path="/comunicacoes" element={<CentralComunicacoes />} />
+                        <Route path="/configuracoes" element={<Configuracoes />} />
                         <Route path="/planos-acao" element={<PlanosAcao />} />
                         <Route path="/intervencoes" element={<Intervencoes />} />
                         <Route path="/alunos-em-risco" element={<AlunosEmRisco />} />

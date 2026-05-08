@@ -422,9 +422,14 @@ def buscar_alunos(
             'media_geral': float(a.media_geral) if a.media_geral else 0,
             'frequencia': float(a.frequencia) if a.frequencia else 0,
             'risco_evasao': pred['risco_evasao'],
-            'nivel_risco': pred['nivel_risco'].value if hasattr(pred['nivel_risco'], 'value') else pred['nivel_risco']
+            'nivel_risco': pred['nivel_risco'].value if hasattr(pred['nivel_risco'], 'value') else pred['nivel_risco'],
+            'nome_responsavel_1': a.nome_responsavel_1,
+            'telefone_responsavel_1': a.telefone_responsavel_1,
+            'email_responsavel_1': a.email_responsavel_1,
+            'nome_responsavel_2': a.nome_responsavel_2,
+            'telefone_responsavel_2': a.telefone_responsavel_2,
         })
-    
+
     return resultado
 
 
@@ -2809,13 +2814,16 @@ def get_indicadores_eficacia_sistema(
     """
     from datetime import datetime, timedelta
     from sqlalchemy import func, distinct
-    
+
     # Definir período (últimos 6 meses se não especificado)
     if not start_date:
         end = datetime.now()
         start = end - timedelta(days=180)
         start_date = start.strftime('%Y-%m-%d')
         end_date = end.strftime('%Y-%m-%d')
+    else:
+        if not end_date:
+            end_date = datetime.now().strftime('%Y-%m-%d')
     
     # ==========================================
     # 1. ALUNOS EM RISCO RECUPERADOS
@@ -3528,6 +3536,57 @@ def listar_faltas_aluno(
     
     faltas = query.order_by(models.RegistroFaltasDiarias.data.desc()).all()
     return faltas
+
+
+@app.get("/alunos/{matricula}/faltas-por-disciplina")
+def faltas_por_disciplina(
+    matricula: str,
+    periodo_letivo: Optional[str] = None,
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Agregar faltas de um aluno por disciplina.
+    Retorna total de faltas, datas das últimas faltas e status de justificativa por disciplina.
+    """
+    from sqlalchemy import func, case
+
+    # Query base
+    query = db.query(
+        models.RegistroFaltasDiarias.disciplina,
+        func.count(models.RegistroFaltasDiarias.id).label('total_faltas'),
+        func.sum(case((models.RegistroFaltasDiarias.justificada == True, 1), else_=0)).label('faltas_justificadas'),
+        func.sum(case((models.RegistroFaltasDiarias.justificada == False, 1), else_=0)).label('faltas_nao_justificadas'),
+        func.max(models.RegistroFaltasDiarias.data).label('ultima_falta'),
+        func.group_concat(
+            func.date_format(models.RegistroFaltasDiarias.data, '%Y-%m-%d'),
+        ).label('datas_faltas')
+    ).filter(
+        models.RegistroFaltasDiarias.aluno_matricula == matricula
+    )
+
+    if periodo_letivo:
+        # Filtrar por ano letivo (ex: "2024-1" → ano 2024)
+        ano = periodo_letivo.split('-')[0]
+        query = query.filter(func.year(models.RegistroFaltasDiarias.data) == int(ano))
+
+    resultados = query.group_by(
+        models.RegistroFaltasDiarias.disciplina
+    ).order_by(
+        func.count(models.RegistroFaltasDiarias.id).desc()
+    ).all()
+
+    return [
+        {
+            'disciplina': r.disciplina,
+            'total_faltas': r.total_faltas,
+            'faltas_justificadas': r.faltas_justificadas or 0,
+            'faltas_nao_justificadas': r.faltas_nao_justificadas or 0,
+            'ultima_falta': r.ultima_falta.isoformat() if r.ultima_falta else None,
+            'datas_faltas': r.datas_faltas.split(',') if r.datas_faltas else [],
+        }
+        for r in resultados
+    ]
 
 
 @app.get("/alunos/{matricula}/faltas-consecutivas")
@@ -5531,6 +5590,1332 @@ def estatisticas_egressos(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao obter estatísticas: {str(e)}"
         )
+
+
+# ============================================
+# ENDPOINTS DE DISCIPLINAS
+# ============================================
+
+@app.post("/disciplinas", response_model=schemas.DisciplinaResponse)
+def create_disciplina(
+    disciplina: schemas.DisciplinaCreate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Criar nova disciplina"""
+    try:
+        db_disciplina = models.Disciplina(**disciplina.model_dump())
+        db.add(db_disciplina)
+        db.commit()
+        db.refresh(db_disciplina)
+        return db_disciplina
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Nome de disciplina já existe.")
+
+@app.get("/disciplinas", response_model=List[schemas.DisciplinaResponse])
+def list_disciplinas(
+    ativas_only: bool = True,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Listar todas as disciplinas"""
+    query = db.query(models.Disciplina)
+    if ativas_only:
+        query = query.filter(models.Disciplina.ativa == True)
+    return query.order_by(models.Disciplina.nome).all()
+
+@app.put("/disciplinas/{disciplina_id}", response_model=schemas.DisciplinaResponse)
+def update_disciplina(
+    disciplina_id: int,
+    disciplina_update: schemas.DisciplinaUpdate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Atualizar disciplina"""
+    db_disciplina = db.query(models.Disciplina).filter(models.Disciplina.id == disciplina_id).first()
+    if not db_disciplina:
+        raise HTTPException(status_code=404, detail="Disciplina não encontrada")
+
+    update_data = disciplina_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_disciplina, key, value)
+
+    db.commit()
+    db.refresh(db_disciplina)
+    return db_disciplina
+
+@app.delete("/disciplinas/{disciplina_id}")
+def delete_disciplina(
+    disciplina_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Excluir disciplina"""
+    db_disciplina = db.query(models.Disciplina).filter(models.Disciplina.id == disciplina_id).first()
+    if not db_disciplina:
+        raise HTTPException(status_code=404, detail="Disciplina não encontrada")
+
+    db.delete(db_disciplina)
+    db.commit()
+    return {"message": "Disciplina excluída com sucesso"}
+
+
+# ============================================
+# ENDPOINTS DE NOTAS POR DISCIPLINA
+# ============================================
+
+@app.post("/alunos/{matricula}/notas", response_model=schemas.NotaDisciplinaResponse)
+def create_nota_disciplina(
+    matricula: str,
+    nota_data: schemas.NotaDisciplinaCreate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Criar nota de aluno por disciplina"""
+    # Verificar se aluno existe
+    aluno = db.query(models.Aluno).filter(models.Aluno.matricula == matricula).first()
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    try:
+        db_nota = models.NotaDisciplina(
+            aluno_matricula=matricula,
+            **nota_data.model_dump()
+        )
+        db.add(db_nota)
+        db.commit()
+        db.refresh(db_nota)
+        return db_nota
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Erro ao criar nota: {str(e)}")
+
+@app.get("/alunos/{matricula}/notas", response_model=List[schemas.NotaDisciplinaResponse])
+def list_notas_disciplina(
+    matricula: str,
+    periodo_letivo: Optional[str] = None,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Listar notas de um aluno por disciplina"""
+    query = db.query(models.NotaDisciplina).filter(
+        models.NotaDisciplina.aluno_matricula == matricula
+    )
+    if periodo_letivo:
+        query = query.filter(models.NotaDisciplina.periodo_letivo == periodo_letivo)
+    return query.order_by(
+        models.NotaDisciplina.periodo_letivo.desc(),
+        models.NotaDisciplina.bimestre
+    ).all()
+
+@app.get("/alunos/{matricula}/notas/{nota_id}", response_model=schemas.NotaDisciplinaResponse)
+def get_nota_disciplina(
+    matricula: str,
+    nota_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Obter nota específica"""
+    nota = db.query(models.NotaDisciplina).filter(
+        models.NotaDisciplina.aluno_matricula == matricula,
+        models.NotaDisciplina.id == nota_id
+    ).first()
+    if not nota:
+        raise HTTPException(status_code=404, detail="Nota não encontrada")
+    return nota
+
+@app.put("/alunos/{matricula}/notas/{nota_id}", response_model=schemas.NotaDisciplinaResponse)
+def update_nota_disciplina(
+    matricula: str,
+    nota_id: int,
+    nota_update: schemas.NotaDisciplinaUpdate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Atualizar nota de aluno por disciplina"""
+    nota = db.query(models.NotaDisciplina).filter(
+        models.NotaDisciplina.aluno_matricula == matricula,
+        models.NotaDisciplina.id == nota_id
+    ).first()
+    if not nota:
+        raise HTTPException(status_code=404, detail="Nota não encontrada")
+
+    update_data = nota_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(nota, key, value)
+
+    db.commit()
+    db.refresh(nota)
+    return nota
+
+@app.delete("/alunos/{matricula}/notas/{nota_id}")
+def delete_nota_disciplina(
+    matricula: str,
+    nota_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Excluir nota"""
+    nota = db.query(models.NotaDisciplina).filter(
+        models.NotaDisciplina.aluno_matricula == matricula,
+        models.NotaDisciplina.id == nota_id
+    ).first()
+    if not nota:
+        raise HTTPException(status_code=404, detail="Nota não encontrada")
+
+    db.delete(nota)
+    db.commit()
+    return {"message": "Nota excluída com sucesso"}
+
+@app.get("/alunos/{matricula}/notas/resumo")
+def resumo_notas_disciplina(
+    matricula: str,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Resumo das notas do aluno: média geral, disciplinas com reprovação, etc."""
+    notas = db.query(models.NotaDisciplina).filter(
+        models.NotaDisciplina.aluno_matricula == matricula
+    ).all()
+
+    if not notas:
+        return {"total_notas": 0, "media_geral": None, "disciplinas_reprovacao": [], "por_periodo": {}}
+
+    # Média geral
+    media_geral = sum(n.nota for n in notas) / len(notas)
+
+    # Disciplinas com reprovação
+    reprovas = {}
+    for nota in notas:
+        if nota.situacao == models.SituacaoNota.REPROVADO:
+            if nota.disciplina not in reprovas:
+                reprovas[nota.disciplina] = 0
+            reprovas[nota.disciplina] += 1
+
+    # Por período
+    por_periodo = {}
+    for nota in notas:
+        periodo = nota.periodo_letivo
+        if periodo not in por_periodo:
+            por_periodo[periodo] = []
+        por_periodo[periodo].append({
+            "disciplina": nota.disciplina,
+            "bimestre": nota.bimestre,
+            "nota": float(nota.nota),
+            "situacao": nota.situacao.value if hasattr(nota.situacao, 'value') else nota.situacao,
+        })
+
+    return {
+        "total_notas": len(notas),
+        "media_geral": round(media_geral, 2),
+        "disciplinas_reprovacao": [{"disciplina": k, "qtd": v} for k, v in reprovas.items()],
+        "por_periodo": por_periodo,
+    }
+
+
+# ============================================
+# ENDPOINT UNIFICADO - JORNADA DO ALUNO
+# ============================================
+
+@app.get("/alunos/{matricula}/jornada")
+def get_jornada_aluno(
+    matricula: str,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Timeline unificada da jornada do aluno.
+    Agrega todos os eventos cronologicamente:
+    - Predições ao longo do tempo
+    - Intervenções realizadas
+    - Frequência mensal
+    - Questionários respondidos
+    - Alertas de faltas
+    - Notas por disciplina
+    """
+    # Verificar se aluno existe
+    aluno = db.query(models.Aluno).filter(models.Aluno.matricula == matricula).first()
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    eventos = []
+
+    # 1. Predições
+    predicoes = db.query(models.Predicao).filter(
+        models.Predicao.aluno_id == matricula
+    ).order_by(models.Predicao.data_predicao.desc()).all()
+    for p in predicoes:
+        eventos.append({
+            "tipo": "PREDICAO",
+            "data": p.data_predicao.isoformat() if p.data_predicao else None,
+            "titulo": f"Predição: {p.nivel_risco.value if hasattr(p.nivel_risco, 'value') else p.nivel_risco}",
+            "detalhes": {
+                "risco_evasao": float(p.risco_evasao),
+                "nivel_risco": p.nivel_risco.value if hasattr(p.nivel_risco, 'value') else p.nivel_risco,
+                "fatores_principais": p.fatores_principais,
+                "modelo_versao": p.modelo_ml_versao,
+            },
+            "cor": "purple",
+            "icone": "trend-up",
+        })
+
+    # 2. Intervenções
+    intervencoes = db.query(models.Intervencao).filter(
+        models.Intervencao.aluno_id == matricula
+    ).order_by(models.Intervencao.data_intervencao.desc()).all()
+    for i in intervencoes:
+        eventos.append({
+            "tipo": "INTERVENCAO",
+            "data": i.data_intervencao.isoformat() if i.data_intervencao else None,
+            "titulo": f"Intervenção: {i.tipo}",
+            "detalhes": {
+                "id": i.id,
+                "tipo": i.tipo,
+                "descricao": i.descricao,
+                "status": i.status.value if hasattr(i.status, 'value') else i.status,
+                "responsavel": i.usuario_id,
+                "data_conclusao": i.data_conclusao.isoformat() if i.data_conclusao else None,
+                "observacoes": i.observacoes,
+                "prioridade": i.prioridade.value if hasattr(i.prioridade, 'value') else i.prioridade,
+            },
+            "cor": "blue",
+            "icone": "alert-circle",
+        })
+
+    # 3. Frequência mensal
+    frequencias = db.query(models.FrequenciaMensal).filter(
+        models.FrequenciaMensal.aluno_id == matricula
+    ).order_by(models.FrequenciaMensal.ano.desc(), models.FrequenciaMensal.mes.desc()).all()
+    for f in frequencias:
+        eventos.append({
+            "tipo": "FREQUENCIA",
+            "data": f.data_registro.isoformat() if f.data_registro else None,
+            "titulo": f"Frequência: {float(f.frequencia)}%",
+            "detalhes": {
+                "mes": f"{f.mes:02d}/{f.ano}",
+                "frequencia": float(f.frequencia),
+                "faltas_justificadas": f.faltas_justificadas,
+                "faltas_nao_justificadas": f.faltas_nao_justificadas,
+                "total_aulas": f.total_aulas_mes,
+            },
+            "cor": float(f.frequencia) >= 75 and "green" or "orange",
+            "icone": "calendar",
+        })
+
+    # 4. Questionários
+    questionarios = db.query(models.QuestionarioPsicossocial).filter(
+        models.QuestionarioPsicossocial.aluno_matricula == matricula
+    ).order_by(models.QuestionarioPsicossocial.data_resposta.desc()).all()
+    for q in questionarios:
+        eventos.append({
+            "tipo": "QUESTIONARIO",
+            "data": q.data_resposta.isoformat() if q.data_resposta else None,
+            "titulo": f"Questionário respondido (Score: {q.score_total})",
+            "detalhes": {
+                "score_total": q.score_total,
+                "score_saude_mental": q.score_saude_mental,
+                "score_integracao_social": q.score_integracao_social,
+                "score_satisfacao_academica": q.score_satisfacao_academica,
+                "score_intencao_evasao": q.score_intencao_evasao,
+                "fator_critico": q.fator_critico,
+            },
+            "cor": "teal",
+            "icone": "help-circle",
+        })
+
+    # 5. Alertas de faltas
+    alertas = db.query(models.AlertaFaltasConsecutivas).filter(
+        models.AlertaFaltasConsecutivas.aluno_matricula == matricula
+    ).order_by(models.AlertaFaltasConsecutivas.criado_at.desc()).all()
+    for a in alertas:
+        eventos.append({
+            "tipo": "ALERTA_FALTAS",
+            "data": a.criado_at.isoformat() if a.criado_at else None,
+            "titulo": f"Alerta de Faltas: {a.tipo_alerta} ({a.quantidade_faltas} faltas)",
+            "detalhes": {
+                "id": a.id,
+                "tipo_alerta": a.tipo_alerta,
+                "quantidade_faltas": a.quantidade_faltas,
+                "status": a.status,
+                "data_inicio_faltas": a.data_inicio_faltas.isoformat() if a.data_inicio_faltas else None,
+                "disciplinas_afetadas": a.disciplinas_afetadas,
+                "acoes_tomadas": a.acoes_tomadas,
+            },
+            "cor": a.status == "RESOLVIDO" and "green" or "red",
+            "icone": "alert-triangle",
+        })
+
+    # 6. Notas por disciplina
+    notas = db.query(models.NotaDisciplina).filter(
+        models.NotaDisciplina.aluno_matricula == matricula
+    ).order_by(models.NotaDisciplina.periodo_letivo.desc(), models.NotaDisciplina.bimestre.desc()).all()
+    for n in notas:
+        situacao_val = n.situacao.value if hasattr(n.situacao, 'value') else n.situacao
+        cor_nota = "green" if situacao_val == "APROVADO" else ("red" if situacao_val == "REPROVADO" else "gray")
+        eventos.append({
+            "tipo": "NOTA",
+            "data": n.criado_at.isoformat() if n.criado_at else None,
+            "titulo": f"Nota: {n.disciplina} - {n.nota} (Bim. {n.bimestre})",
+            "detalhes": {
+                "disciplina": n.disciplina,
+                "nota": float(n.nota),
+                "bimestre": n.bimestre,
+                "periodo_letivo": n.periodo_letivo,
+                "situacao": situacao_val,
+                "faltas_disciplina": n.faltas_disciplina,
+            },
+            "cor": cor_nota,
+            "icone": "book",
+        })
+
+    # 7. Atendimentos/Ocorrências
+    atendimentos = db.query(models.Atendimento).filter(
+        models.Atendimento.aluno_matricula == matricula
+    ).order_by(models.Atendimento.data_atendimento.desc()).all()
+    for at in atendimentos:
+        tipo_val = at.tipo_atendimento.value if hasattr(at.tipo_atendimento, 'value') else at.tipo_atendimento
+        status_val = at.status.value if hasattr(at.status, 'value') else at.status
+        
+        cores_atendimento = {
+            'PSICOLOGICO': 'purple',
+            'SOCIAL': 'blue',
+            'DISCIPLINAR': 'red',
+            'ACADEMICO': 'green',
+            'SAUDE': 'teal',
+            'ENCAMINHAMENTO_EXTERNO': 'orange',
+            'CONVERSA_INFORMAL': 'gray',
+        }
+        
+        eventos.append({
+            "tipo": "ATENDIMENTO",
+            "data": at.data_atendimento.isoformat() if at.data_atendimento else None,
+            "titulo": f"Atendimento: {tipo_val} ({status_val})",
+            "detalhes": {
+                "id": at.id,
+                "tipo": tipo_val,
+                "status": status_val,
+                "descricao": at.descricao,
+                "observacoes": at.observacoes,
+                "local": at.local,
+                "prioridade": at.prioridade,
+                "necessita_encaminhamento": at.necessita_encaminhamento,
+                "necessita_followup": at.necessita_followup,
+                "data_proximo_atendimento": at.data_proximo_atendimento.isoformat() if at.data_proximo_atendimento else None,
+            },
+            "cor": cores_atendimento.get(tipo_val, 'gray'),
+            "icone": "users",
+        })
+
+    # Ordenar todos os eventos por data (mais recente primeiro)
+    eventos.sort(key=lambda x: x["data"] or "", reverse=True)
+
+    return {
+        "matricula": matricula,
+        "nome": aluno.nome,
+        "total_eventos": len(eventos),
+        "eventos": eventos,
+    }
+
+
+# ============================================
+# ENDPOINTS DE ATENDIMENTOS / OCORRÊNCIAS
+# ============================================
+
+@app.post("/alunos/{matricula}/atendimentos", response_model=schemas.AtendimentoResponse, status_code=status.HTTP_201_CREATED)
+def create_atendimento(
+    matricula: str,
+    atendimento_data: schemas.AtendimentoCreate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Registrar atendimento/ocorrência para aluno"""
+    aluno = db.query(models.Aluno).filter(models.Aluno.matricula == matricula).first()
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    # Segurança: Usa o ID do usuário autenticado, ignorando o enviado no body
+    dados_atendimento = atendimento_data.model_dump()
+    dados_atendimento['usuario_id'] = current_user.id
+
+    db_atendimento = models.Atendimento(
+        aluno_matricula=matricula,
+        **dados_atendimento
+    )
+    db.add(db_atendimento)
+    db.commit()
+    db.refresh(db_atendimento)
+    return db_atendimento
+
+@app.get("/alunos/{matricula}/atendimentos", response_model=List[schemas.AtendimentoResponse])
+def list_atendimentos(
+    matricula: str,
+    tipo: Optional[str] = None,
+    status: Optional[str] = None,
+    prioridade: Optional[str] = None,
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Listar atendimentos de um aluno com filtros"""
+    query = db.query(models.Atendimento).filter(
+        models.Atendimento.aluno_matricula == matricula
+    )
+    if tipo:
+        query = query.filter(models.Atendimento.tipo_atendimento == tipo)
+    if status:
+        query = query.filter(models.Atendimento.status == status)
+    if prioridade:
+        query = query.filter(models.Atendimento.prioridade == prioridade)
+    if data_inicio:
+        query = query.filter(models.Atendimento.data_atendimento >= data_inicio)
+    if data_fim:
+        query = query.filter(models.Atendimento.data_atendimento <= data_fim)
+    return query.order_by(models.Atendimento.data_atendimento.desc()).all()
+
+@app.get("/alunos/{matricula}/atendimentos/{atendimento_id}", response_model=schemas.AtendimentoResponse)
+def get_atendimento(
+    matricula: str,
+    atendimento_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Obter atendimento específico"""
+    atendimento = db.query(models.Atendimento).filter(
+        models.Atendimento.aluno_matricula == matricula,
+        models.Atendimento.id == atendimento_id
+    ).first()
+    if not atendimento:
+        raise HTTPException(status_code=404, detail="Atendimento não encontrado")
+    return atendimento
+
+@app.put("/alunos/{matricula}/atendimentos/{atendimento_id}", response_model=schemas.AtendimentoResponse)
+def update_atendimento(
+    matricula: str,
+    atendimento_id: int,
+    atendimento_update: schemas.AtendimentoUpdate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Atualizar atendimento"""
+    atendimento = db.query(models.Atendimento).filter(
+        models.Atendimento.aluno_matricula == matricula,
+        models.Atendimento.id == atendimento_id
+    ).first()
+    if not atendimento:
+        raise HTTPException(status_code=404, detail="Atendimento não encontrado")
+
+    update_data = atendimento_update.model_dump(exclude_unset=True)
+    
+    # Se houver mudança de status_encaminhamento, registrar no histórico
+    if 'status_encaminhamento' in update_data and atendimento.necessita_encaminhamento:
+        status_anterior = atendimento.status_encaminhamento
+        status_novo = update_data['status_encaminhamento']
+        
+        if status_anterior != status_novo:
+            historico = models.HistoricoEncaminhamento(
+                atendimento_id=atendimento_id,
+                usuario_id=current_user.id,
+                status_anterior=status_anterior,
+                status_novo=status_novo,
+            )
+            db.add(historico)
+
+    for key, value in update_data.items():
+        setattr(atendimento, key, value)
+
+    db.commit()
+    db.refresh(atendimento)
+    return atendimento
+
+@app.delete("/alunos/{matricula}/atendimentos/{atendimento_id}")
+def delete_atendimento(
+    matricula: str,
+    atendimento_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Excluir atendimento"""
+    atendimento = db.query(models.Atendimento).filter(
+        models.Atendimento.aluno_matricula == matricula,
+        models.Atendimento.id == atendimento_id
+    ).first()
+    if not atendimento:
+        raise HTTPException(status_code=404, detail="Atendimento não encontrado")
+
+    db.delete(atendimento)
+    db.commit()
+    return {"message": "Atendimento excluído com sucesso"}
+
+@app.get("/atendimentos", response_model=List[schemas.AtendimentoResponse])
+def list_all_atendimentos(
+    tipo: Optional[str] = None,
+    status: Optional[str] = None,
+    prioridade: Optional[str] = None,
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+    limit: int = 100,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Listar todos os atendimentos do sistema com filtros"""
+    query = db.query(models.Atendimento)
+    if tipo:
+        query = query.filter(models.Atendimento.tipo_atendimento == tipo)
+    if status:
+        query = query.filter(models.Atendimento.status == status)
+    if prioridade:
+        query = query.filter(models.Atendimento.prioridade == prioridade)
+    if data_inicio:
+        query = query.filter(models.Atendimento.data_atendimento >= data_inicio)
+    if data_fim:
+        query = query.filter(models.Atendimento.data_atendimento <= data_fim)
+    return query.order_by(models.Atendimento.data_atendimento.desc()).limit(limit).all()
+
+@app.get("/atendimentos/stats")
+def stats_atendimentos(
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Estatísticas gerais de atendimentos"""
+    from sqlalchemy import func
+
+    total = db.query(models.Atendimento).count()
+    com_encaminhamento = db.query(models.Atendimento).filter(models.Atendimento.necessita_encaminhamento == True).count()
+    com_followup = db.query(models.Atendimento).filter(models.Atendimento.necessita_followup == True).count()
+
+    # Por tipo
+    por_tipo = {}
+    for tipo, count in db.query(models.Atendimento.tipo_atendimento, func.count(models.Atendimento.id)).group_by(models.Atendimento.tipo_atendimento).all():
+        por_tipo[tipo.value if hasattr(tipo, 'value') else tipo] = count
+
+    # Por status
+    por_status = {}
+    for s, count in db.query(models.Atendimento.status, func.count(models.Atendimento.id)).group_by(models.Atendimento.status).all():
+        por_status[s.value if hasattr(s, 'value') else s] = count
+
+    # Por prioridade
+    por_prioridade = {}
+    for p, count in db.query(models.Atendimento.prioridade, func.count(models.Atendimento.id)).group_by(models.Atendimento.prioridade).all():
+        por_prioridade[p] = count
+
+    return {
+        "total": total,
+        "por_tipo": por_tipo,
+        "por_status": por_status,
+        "por_prioridade": por_prioridade,
+        "com_encaminhamento": com_encaminhamento,
+        "com_followup": com_followup,
+    }
+
+@app.get("/atendimentos/{atendimento_id}/historico", response_model=List[schemas.HistoricoEncaminhamentoResponse])
+def get_historico_encaminhamento(
+    atendimento_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Obter histórico de mudanças de status de um encaminhamento"""
+    historico = db.query(models.HistoricoEncaminhamento).filter(
+        models.HistoricoEncaminhamento.atendimento_id == atendimento_id
+    ).order_by(models.HistoricoEncaminhamento.data_mudanca.desc()).all()
+    
+    # Enriquecer com nome do usuário
+    resultado = []
+    for h in historico:
+        usuario = db.query(models.Usuario).filter(models.Usuario.id == h.usuario_id).first()
+        resultado.append({
+            **h.__dict__,
+            "usuario": usuario.nome if usuario else "Desconhecido"
+        })
+    
+    return resultado
+
+@app.get("/atendimentos/alertas-demora")
+def get_alertas_demora_encaminhamento(
+    dias_limite: int = 30,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Obter encaminhamentos que estão há mais de X dias no mesmo status.
+    Útil para identificar casos que precisam de atenção.
+    """
+    from sqlalchemy import func, and_
+    
+    # Buscar encaminhamentos com status SOLICITADO ou EM_ATENDIMENTO há mais de X dias
+    data_limite = datetime.now() - timedelta(days=dias_limite)
+    
+    alertas = db.query(models.Atendimento).join(
+        models.Aluno, models.Aluno.matricula == models.Atendimento.aluno_matricula
+    ).filter(
+        models.Atendimento.necessita_encaminhamento == True,
+        models.Atendimento.status_encaminhamento.in_(['SOLICITADO', 'EM_ATENDIMENTO']),
+        models.Atendimento.data_atendimento <= data_limite
+    ).all()
+    
+    resultado = []
+    for at in alertas:
+        # Calcular dias em espera
+        dias_espera = (datetime.now().date() - at.data_atendimento).days if at.data_atendimento else 0
+        
+        resultado.append({
+            "id": at.id,
+            "aluno_matricula": at.aluno_matricula,
+            "aluno_nome": at.aluno.nome if at.aluno else "N/A",
+            "tipo_encaminhamento": at.tipo_encaminhamento,
+            "status_encaminhamento": at.status_encaminhamento,
+            "data_atendimento": at.data_atendimento.isoformat() if at.data_atendimento else None,
+            "dias_espera": dias_espera,
+            "prioridade": at.prioridade,
+        })
+    
+    return {
+        "total_alertas": len(resultado),
+        "dias_limite": dias_limite,
+        "alertas": resultado,
+    }
+
+
+# ============================================
+# ENDPOINTS DE COMUNICAÇÕES
+# ============================================
+
+@app.post("/comunicacoes", response_model=schemas.ComunicacaoResponse, status_code=status.HTTP_201_CREATED)
+def create_comunicacao(
+    comunicacao_data: schemas.ComunicacaoCreate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Registrar e enviar comunicação/notificação"""
+    aluno = db.query(models.Aluno).filter(models.Aluno.matricula == comunicacao_data.aluno_matricula).first()
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    # Usar serviço unificado
+    from servico_comunicacao import disparar_mensagem_unificado
+    
+    return disparar_mensagem_unificado(
+        db=db,
+        aluno_matricula=comunicacao_data.aluno_matricula,
+        usuario_id=current_user.id,
+        destinatario_tipo=comunicacao_data.destinatario_tipo,
+        destinatario_nome=comunicacao_data.destinatario_nome,
+        destinatario_contato=comunicacao_data.destinatario_contato,
+        tipo_comunicacao=comunicacao_data.tipo_comunicacao,
+        canal=comunicacao_data.canal,
+        mensagem=comunicacao_data.mensagem,
+        template_id=comunicacao_data.template_id,
+        eh_lembrete=comunicacao_data.eh_lembrete,
+        data_agendada=comunicacao_data.data_agendada,
+        contexto={
+            "nome_aluno": aluno.nome,
+            "nome_responsavel": comunicacao_data.destinatario_nome or "Responsável",
+        }
+    )
+
+
+@app.post("/comunicacoes/disparar", response_model=schemas.ComunicacaoResponse, status_code=status.HTTP_201_CREATED)
+def disparar_comunicacao(
+    payload: dict,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Endpoint unificado para gerar mensagem, enviar e registrar no histórico.
+    """
+    from servico_comunicacao import disparar_mensagem_unificado
+
+    aluno_matricula = payload.get('aluno_matricula')
+    template_id = payload.get('template_id', 'MANUAL')
+    contexto = payload.get('contexto', {})
+    canal = payload.get('canal', 'SISTEMA')
+    destinatario_tipo = payload.get('destinatario_tipo', 'RESPONSAVEL')
+    destinatario_nome = payload.get('destinatario_nome')
+    destinatario_contato = payload.get('destinatario_contato')
+    modulo_origem = payload.get('modulo_origem')
+    eh_lembrete = payload.get('eh_lembrete', False)
+    data_agendada_str = payload.get('data_agendada')
+    
+    data_agendada = None
+    if data_agendada_str:
+        try:
+            data_agendada = datetime.fromisoformat(data_agendada_str)
+        except:
+            pass
+
+    try:
+        comunicacao = disparar_mensagem_unificado(
+            db=db,
+            aluno_matricula=aluno_matricula,
+            usuario_id=current_user.id,
+            template_id=template_id,
+            contexto=contexto,
+            canal=canal,
+            destinatario_tipo=destinatario_tipo,
+            destinatario_nome=destinatario_nome,
+            destinatario_contato=destinatario_contato,
+            modulo_origem=modulo_origem,
+            eh_lembrete=eh_lembrete,
+            data_agendada=data_agendada,
+        )
+        return comunicacao
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao disparar comunicação: {str(e)}")
+
+
+@app.get("/alunos/{matricula}/comunicacoes", response_model=List[schemas.ComunicacaoResponse])
+def list_comunicacoes_aluno(
+    matricula: str,
+    tipo: Optional[str] = None,
+    canal: Optional[str] = None,
+    status: Optional[str] = None,
+    eh_lembrete: Optional[bool] = None,
+    limit: int = 100,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Listar comunicações de um aluno"""
+    query = db.query(models.Comunicacao).filter(
+        models.Comunicacao.aluno_matricula == matricula
+    )
+    if tipo:
+        query = query.filter(models.Comunicacao.tipo_comunicacao == tipo)
+    if canal:
+        query = query.filter(models.Comunicacao.canal == canal)
+    if status:
+        query = query.filter(models.Comunicacao.status == status)
+    if eh_lembrete is not None:
+        query = query.filter(models.Comunicacao.eh_lembrete == eh_lembrete)
+    return query.order_by(models.Comunicacao.criado_at.desc()).limit(limit).all()
+
+@app.get("/comunicacoes", response_model=List[schemas.ComunicacaoResponse])
+def list_all_comunicacoes(
+    tipo: Optional[str] = None,
+    canal: Optional[str] = None,
+    status: Optional[str] = None,
+    eh_lembrete: Optional[bool] = None,
+    limit: int = 200,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Listar todas as comunicações do sistema com filtros"""
+    query = db.query(models.Comunicacao)
+    if tipo:
+        query = query.filter(models.Comunicacao.tipo_comunicacao == tipo)
+    if canal:
+        query = query.filter(models.Comunicacao.canal == canal)
+    if status:
+        query = query.filter(models.Comunicacao.status == status)
+    if eh_lembrete is not None:
+        query = query.filter(models.Comunicacao.eh_lembrete == eh_lembrete)
+    return query.order_by(models.Comunicacao.criado_at.desc()).limit(limit).all()
+
+@app.put("/comunicacoes/{comunicacao_id}", response_model=schemas.ComunicacaoResponse)
+def update_comunicacao(
+    comunicacao_id: int,
+    comunicacao_update: schemas.ComunicacaoUpdate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Atualizar status ou resposta de comunicação"""
+    comunicacao = db.query(models.Comunicacao).filter(
+        models.Comunicacao.id == comunicacao_id
+    ).first()
+    if not comunicacao:
+        raise HTTPException(status_code=404, detail="Comunicação não encontrada")
+
+    update_data = comunicacao_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(comunicacao, key, value)
+
+    # Auto-update timestamps
+    if comunicacao_update.status and comunicacao_update.status in ['ENVIADA', 'ENTREGUE', 'LIDA']:
+        comunicacao.data_envio_efetivo = comunicacao.data_envio_efetivo or datetime.now()
+    if comunicacao_update.data_leitura:
+        comunicacao.status = 'LIDA'
+
+    db.commit()
+    db.refresh(comunicacao)
+    return comunicacao
+
+@app.delete("/comunicacoes/{comunicacao_id}")
+def delete_comunicacao(
+    comunicacao_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Excluir comunicação"""
+    comunicacao = db.query(models.Comunicacao).filter(
+        models.Comunicacao.id == comunicacao_id
+    ).first()
+    if not comunicacao:
+        raise HTTPException(status_code=404, detail="Comunicação não encontrada")
+
+    db.delete(comunicacao)
+    db.commit()
+    return {"message": "Comunicação excluída com sucesso"}
+
+@app.get("/comunicacoes/stats")
+def stats_comunicacoes(
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Estatísticas gerais de comunicações"""
+    from sqlalchemy import func
+
+    total = db.query(models.Comunicacao).count()
+    pendentes = db.query(models.Comunicacao).filter(models.Comunicacao.status == 'PENDENTE').count()
+    falhas = db.query(models.Comunicacao).filter(models.Comunicacao.status == 'FALHA').count()
+    
+    hoje = datetime.now().date()
+    lembretes_hoje = db.query(models.Comunicacao).filter(
+        models.Comunicacao.eh_lembrete == True,
+        func.date(models.Comunicacao.data_agendada) == hoje
+    ).count()
+
+    # Por tipo
+    por_tipo = {}
+    for t, count in db.query(models.Comunicacao.tipo_comunicacao, func.count(models.Comunicacao.id)).group_by(models.Comunicacao.tipo_comunicacao).all():
+        por_tipo[t.value if hasattr(t, 'value') else t] = count
+
+    # Por canal
+    por_canal = {}
+    for c, count in db.query(models.Comunicacao.canal, func.count(models.Comunicacao.id)).group_by(models.Comunicacao.canal).all():
+        por_canal[c.value if hasattr(c, 'value') else c] = count
+
+    # Por status
+    por_status = {}
+    for s, count in db.query(models.Comunicacao.status, func.count(models.Comunicacao.id)).group_by(models.Comunicacao.status).all():
+        por_status[s.value if hasattr(s, 'value') else s] = count
+
+    return {
+        "total": total,
+        "por_tipo": por_tipo,
+        "por_canal": por_canal,
+        "por_status": por_status,
+        "pendentes": pendentes,
+        "falhas": falhas,
+        "lembretes_hoje": lembretes_hoje,
+    }
+
+
+# ============================================
+# ENDPOINTS DE TEMPLATES DE COMUNICAÇÃO
+# ============================================
+
+@app.get("/templates-comunicacao", response_model=List[schemas.TemplateComunicacaoResponse])
+def list_templates(
+    tipo: Optional[str] = None,
+    canal: Optional[str] = None,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Listar templates de comunicação"""
+    query = db.query(models.TemplateComunicacao).filter(models.TemplateComunicacao.ativo == True)
+    if tipo:
+        query = query.filter(models.TemplateComunicacao.tipo_comunicacao == tipo)
+    if canal:
+        query = query.filter(models.TemplateComunicacao.canal == canal)
+    return query.order_by(models.TemplateComunicacao.nome).all()
+
+@app.post("/templates-comunicacao", response_model=schemas.TemplateComunicacaoResponse, status_code=status.HTTP_201_CREATED)
+def create_template(
+    template_data: schemas.TemplateComunicacaoCreate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Criar novo template de comunicação"""
+    existing = db.query(models.TemplateComunicacao).filter(
+        models.TemplateComunicacao.codigo == template_data.codigo
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Template com este código já existe")
+
+    db_template = models.TemplateComunicacao(**template_data.model_dump())
+    db.add(db_template)
+    db.commit()
+    db.refresh(db_template)
+    return db_template
+
+@app.put("/templates-comunicacao/{template_id}", response_model=schemas.TemplateComunicacaoResponse)
+def update_template(
+    template_id: int,
+    template_update: schemas.TemplateComunicacaoUpdate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Atualizar template de comunicação"""
+    template = db.query(models.TemplateComunicacao).filter(
+        models.TemplateComunicacao.id == template_id
+    ).first()
+    if not template:
+        raise HTTPException(status_code=404, detail="Template não encontrado")
+
+    update_data = template_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(template, key, value)
+
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+# ============================================
+# ENDPOINTS DE CONFIGURAÇÕES DO SISTEMA
+# ============================================
+
+@app.get("/configuracoes", response_model=List[schemas.ConfiguracaoSistemaResponse])
+def listar_configuracoes(
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Listar todas as configurações do sistema."""
+    return db.query(models.ConfiguracaoSistema).all()
+
+@app.get("/configuracoes/{chave}", response_model=schemas.ConfiguracaoSistemaResponse)
+def obter_configuracao(
+    chave: str,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Obter configuração específica por chave."""
+    config = db.query(models.ConfiguracaoSistema).filter(models.ConfiguracaoSistema.chave == chave).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuração não encontrada")
+    return config
+
+@app.put("/configuracoes/{chave}", response_model=schemas.ConfiguracaoSistemaResponse)
+def atualizar_configuracao(
+    chave: str,
+    config_update: schemas.ConfiguracaoSistemaUpdate,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Atualizar valor de uma configuração."""
+    config = db.query(models.ConfiguracaoSistema).filter(models.ConfiguracaoSistema.chave == chave).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuração não encontrada")
+
+    config.valor = config_update.valor
+    db.commit()
+    db.refresh(config)
+    return config
+
+@app.post("/configuracoes/batch")
+def atualizar_configuracoes_em_lote(
+    configs: dict,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Atualizar múltiplas configurações de uma vez.
+    Recebe um dicionário {chave: valor}.
+    """
+    atualizadas = []
+    for chave, novo_valor in configs.items():
+        config = db.query(models.ConfiguracaoSistema).filter(models.ConfiguracaoSistema.chave == chave).first()
+        if config:
+            config.valor = str(novo_valor)
+            atualizadas.append(chave)
+    
+    db.commit()
+    return {"message": f"{len(atualizadas)} configurações atualizadas", "atualizadas": atualizadas}
+
+
+# ============================================
+# ENDPOINTS DE RELATÓRIOS GERENCIAIS
+# ============================================
+
+@app.get("/relatorios/gerenciais/alunos-risco")
+def relatorio_alunos_risco(
+    nivel: str = "TODOS", # BAIXO, MEDIO, ALTO, MUITO_ALTO, TODOS
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Lista de alunos com predição de risco atual."""
+    query = db.query(models.Aluno, models.Predicao, models.Curso).join(
+        models.Predicao, models.Aluno.matricula == models.Predicao.aluno_id
+    ).outerjoin(
+        models.Curso, models.Aluno.curso_id == models.Curso.id
+    )
+
+    # Filtro para pegar a predição mais recente (subquery ou order_by limit 1 por aluno)
+    # Aqui vamos simplificar e trazer tudo, o frontend ou lógica filtra, 
+    # mas o ideal é uma query otimizada. Vamos trazer todos e filtrar.
+    results = query.all()
+
+    alunos_risco = []
+    for aluno, pred, curso in results:
+        if nivel != "TODOS" and pred.nivel_risco != nivel:
+            continue
+        
+        # Apenas alto risco se não for TODOS ou se for explicitamente alto
+        if nivel == "TODOS" and pred.nivel_risco not in [models.NivelRisco.ALTO, models.NivelRisco.MUITO_ALTO]:
+             # Se for TODOS, geralmente relatório gerencial foca em risco. 
+             # Mas vamos retornar todos se a lógica pedir, aqui vou filtrar ALTO/MUITO_ALTO por padrão gerencial
+             pass 
+
+        alunos_risco.append({
+            "matricula": aluno.matricula,
+            "nome": aluno.nome,
+            "curso": curso.nome if curso else "N/A",
+            "turno": aluno.turno,
+            "nivel_risco": pred.nivel_risco.value if hasattr(pred.nivel_risco, 'value') else pred.nivel_risco,
+            "score_risco": float(pred.risco_evasao),
+            "fatores": pred.fatores_principais,
+            "ultima_predicao": pred.data_predicao.isoformat() if pred.data_predicao else None
+        })
+
+    # Ordenar por score de risco decrescente
+    alunos_risco.sort(key=lambda x: x['score_risco'], reverse=True)
+
+    return alunos_risco
+
+@app.get("/relatorios/gerenciais/mapa-calor")
+def relatorio_mapa_calor(
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Agregação de alunos em risco por Zona Residencial."""
+    # Buscar todos os alunos com risco ALTO ou MUITO_ALTO
+    query = db.query(models.Aluno, models.Predicao).join(
+        models.Predicao, models.Aluno.matricula == models.Predicao.aluno_id
+    ).filter(
+        models.Predicao.nivel_risco.in_([models.NivelRisco.ALTO, models.NivelRisco.MUITO_ALTO])
+    )
+    
+    results = query.all()
+    
+    mapa = {}
+    for aluno, pred in results:
+        zona = aluno.zona_residencial or "Não informada"
+        # Limpar string se vier com ZONA_
+        zona_limpa = zona.replace("ZONA_", "").capitalize() if zona.startswith("ZONA_") else zona
+        
+        if zona_limpa not in mapa:
+            mapa[zona_limpa] = {
+                "zona": zona_limpa,
+                "total_alunos": 0,
+                "media_risco": 0.0,
+                "soma_risco": 0.0
+            }
+        
+        mapa[zona_limpa]["total_alunos"] += 1
+        mapa[zona_limpa]["soma_risco"] += float(pred.risco_evasao)
+
+    # Calcular médias
+    for zona_data in mapa.values():
+        if zona_data["total_alunos"] > 0:
+            zona_data["media_risco"] = round(zona_data["soma_risco"] / zona_data["total_alunos"], 2)
+        del zona_data["soma_risco"] # Remover helper
+
+    return sorted(list(mapa.values()), key=lambda x: x["media_risco"], reverse=True)
+
+@app.get("/relatorios/gerenciais/eficacia")
+def relatorio_eficacia(
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    """Dados para análise de eficácia de intervenções."""
+    # Buscar intervenções com dados do aluno e última predição
+    query = db.query(models.Intervencao, models.Aluno).join(
+        models.Aluno, models.Intervencao.aluno_id == models.Aluno.matricula
+    )
+    
+    results = query.all()
+    
+    dados = []
+    for interv, aluno in results:
+        # Pegar predição atual
+        pred_atual = db.query(models.Predicao).filter(
+            models.Predicao.aluno_id == aluno.matricula
+        ).order_by(models.Predicao.data_predicao.desc()).first()
+        
+        dados.append({
+            "id_intervencao": interv.id,
+            "aluno": aluno.nome,
+            "matricula": aluno.matricula,
+            "tipo_intervencao": interv.tipo,
+            "status": interv.status.value if hasattr(interv.status, 'value') else interv.status,
+            "data_inicio": interv.data_intervencao.isoformat() if interv.data_intervencao else None,
+            "prioridade": interv.prioridade,
+            "risco_atual": float(pred_atual.risco_evasao) if pred_atual else None,
+            "nivel_risco_atual": (pred_atual.nivel_risco.value if hasattr(pred_atual.nivel_risco, 'value') else pred_atual.nivel_risco) if pred_atual else None
+        })
+        
+    return dados
+
+
+# ============================================
+# DISCIPLINA PROFESSOR - CRUD
+# ============================================
+
+@app.post("/disciplinas-professor", response_model=schemas.DisciplinaProfessorResponse)
+async def criar_vinculo_professor_disciplina(
+    vinculo: schemas.DisciplinaProfessorCreate,
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Vincular professor a uma disciplina.
+    Apenas ADMIN ou COORDENADOR podem fazer isso.
+    """
+    # Verificar permissão
+    if current_user.role.nome not in ["ADMIN", "COORDENADOR"]:
+        raise HTTPException(status_code=403, detail="Permissão negada")
+
+    # Verificar se usuário existe e é PROFESSOR
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == vinculo.usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    if usuario.role.nome != "PROFESSOR":
+        raise HTTPException(status_code=400, detail="Usuário não é um professor")
+
+    # Verificar se disciplina existe
+    disciplina = db.query(models.Disciplina).filter(models.Disciplina.id == vinculo.disciplina_id).first()
+    if not disciplina:
+        raise HTTPException(status_code=404, detail="Disciplina não encontrada")
+
+    # Verificar duplicata
+    existente = db.query(models.DisciplinaProfessor).filter(
+        models.DisciplinaProfessor.usuario_id == vinculo.usuario_id,
+        models.DisciplinaProfessor.disciplina_id == vinculo.disciplina_id
+    ).first()
+    if existente:
+        raise HTTPException(status_code=400, detail="Professor já está vinculado a esta disciplina")
+
+    # Criar vínculo
+    novo_vinculo = models.DisciplinaProfessor(
+        usuario_id=vinculo.usuario_id,
+        disciplina_id=vinculo.disciplina_id,
+        curso_id=vinculo.curso_id or disciplina.curso_id
+    )
+    db.add(novo_vinculo)
+    db.commit()
+    db.refresh(novo_vinculo)
+
+    return novo_vinculo
+
+
+@app.get("/disciplinas-professor", response_model=List[schemas.DisciplinaProfessorResponse])
+async def listar_vinculos_professor_disciplina(
+    usuario_id: Optional[int] = None,
+    disciplina_id: Optional[int] = None,
+    curso_id: Optional[int] = None,
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Listar vínculos professor-disciplina.
+    Professores veem apenas seus próprios vínculos.
+    ADMIN/COORDENADOR veem todos.
+    """
+    query = db.query(models.DisciplinaProfessor)
+
+    # Filtrar por professor se não for ADMIN/COORDENADOR
+    if current_user.role.nome not in ["ADMIN", "COORDENADOR"]:
+        query = query.filter(models.DisciplinaProfessor.usuario_id == current_user.id)
+    elif usuario_id:
+        query = query.filter(models.DisciplinaProfessor.usuario_id == usuario_id)
+
+    if disciplina_id:
+        query = query.filter(models.DisciplinaProfessor.disciplina_id == disciplina_id)
+    if curso_id:
+        query = query.filter(models.DisciplinaProfessor.curso_id == curso_id)
+
+    vinculos = query.all()
+    return vinculos
+
+
+@app.get("/professores/{usuario_id}/disciplinas")
+async def listar_disciplinas_do_professor(
+    usuario_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Listar todas as disciplinas de um professor.
+    """
+    # Verificar permissão
+    if current_user.role.nome not in ["ADMIN", "COORDENADOR"] and current_user.id != usuario_id:
+        raise HTTPException(status_code=403, detail="Permissão negada")
+
+    vinculos = db.query(models.DisciplinaProfessor).filter(
+        models.DisciplinaProfessor.usuario_id == usuario_id
+    ).all()
+
+    disciplinas = []
+    for vinculo in vinculos:
+        disciplina = db.query(models.Disciplina).filter(models.Disciplina.id == vinculo.disciplina_id).first()
+        if disciplina:
+            disciplinas.append({
+                "id": disciplina.id,
+                "nome": disciplina.nome,
+                "ativa": disciplina.ativa,
+                "curso_id": disciplina.curso_id
+            })
+
+    return disciplinas
+
+
+@app.delete("/disciplinas-professor/{vinculo_id}")
+async def remover_vinculo_professor_disciplina(
+    vinculo_id: int,
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Remover vínculo professor-disciplina.
+    Apenas ADMIN ou COORDENADOR.
+    """
+    if current_user.role.nome not in ["ADMIN", "COORDENADOR"]:
+        raise HTTPException(status_code=403, detail="Permissão negada")
+
+    vinculo = db.query(models.DisciplinaProfessor).filter(
+        models.DisciplinaProfessor.id == vinculo_id
+    ).first()
+    if not vinculo:
+        raise HTTPException(status_code=404, detail="Vínculo não encontrado")
+
+    db.delete(vinculo)
+    db.commit()
+
+    return {"message": "Vínculo removido com sucesso"}
+
+
+@app.get("/minhas-disciplinas")
+async def listar_minhas_disciplinas(
+    current_user: models.Usuario = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Listar disciplinas do professor logado.
+    Usado pelo frontend para carregar opções do professor.
+    """
+    # Verificar se é professor
+    if current_user.role.nome != "PROFESSOR":
+        raise HTTPException(status_code=403, detail="Apenas professores podem acessar este endpoint")
+
+    vinculos = db.query(models.DisciplinaProfessor).filter(
+        models.DisciplinaProfessor.usuario_id == current_user.id
+    ).all()
+
+    disciplinas = []
+    for vinculo in vinculos:
+        disciplina = db.query(models.Disciplina).filter(models.Disciplina.id == vinculo.disciplina_id).first()
+        if disciplina:
+            disciplinas.append({
+                "id": disciplina.id,
+                "nome": disciplina.nome,
+                "ativa": disciplina.ativa,
+                "curso_id": disciplina.curso_id
+            })
+
+    return disciplinas
 
 
 # ============================================

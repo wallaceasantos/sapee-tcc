@@ -973,6 +973,42 @@ export const api = {
     },
 
     /**
+     * Enviar notificação rápida via WhatsApp/Telegram (Gatilho)
+     */
+    enviarRapido: async (token: string, matricula: string, data: {
+      mensagem: string;
+      canal: string; // 'WHATSAPP', 'TELEGRAM', 'SISTEMA'
+      tipo: string;  // 'FALTAS', 'RISCO', 'INTERVENCAO'
+      destinatario_nome: string;
+      destinatario_contato: string;
+    }): Promise<any> => {
+      // Chama o endpoint de comunicações para garantir o log
+      const response = await fetch(`${API_BASE_URL}/comunicacoes`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({
+          aluno_matricula: matricula,
+          destinatario_tipo: 'RESPONSAVEL',
+          destinatario_nome: data.destinatario_nome,
+          destinatario_contato: data.destinatario_contato,
+          tipo_comunicacao: data.tipo,
+          canal: data.canal,
+          mensagem: data.mensagem,
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Erro ao enviar notificação');
+      }
+
+      return response.json();
+    },
+
+    /**
      * Verificar faltas consecutivas
      */
     verificarConsecutivas: async (
@@ -989,6 +1025,31 @@ export const api = {
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Erro ao verificar faltas consecutivas');
+      }
+
+      return response.json();
+    },
+
+    /**
+     * Obter faltas agrupadas por disciplina
+     */
+    porDisciplina: async (
+      token: string,
+      matricula: string,
+      periodo_letivo?: string
+    ): Promise<any[]> => {
+      const params = new URLSearchParams();
+      if (periodo_letivo) params.set('periodo_letivo', periodo_letivo);
+      const response = await fetch(
+        `${API_BASE_URL}/alunos/${matricula}/faltas-por-disciplina?${params.toString()}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Erro ao buscar faltas por disciplina');
       }
 
       return response.json();
@@ -1101,16 +1162,546 @@ export const api = {
     stats: async (token: string): Promise<any> => {
       const response = await fetch(
         `${API_BASE_URL}/dashboard/frequencia-stats`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao obter stats');
+      return response.json();
+    },
+  },
+
+  /**
+   * Cursos
+   */
+  cursos: {
+    list: async (token: string): Promise<any[]> => {
+      const response = await fetch(
+        `${API_BASE_URL}/cursos`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao listar cursos');
+      return response.json();
+    },
+
+    get: async (token: string, id: number): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/cursos/${id}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao buscar curso');
+      return response.json();
+    },
+
+    create: async (token: string, data: { nome: string, modalidade?: string }): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/cursos`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao criar curso');
+      return response.json();
+    },
+
+    update: async (token: string, id: number, data: any): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/cursos/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao atualizar curso');
+      return response.json();
+    },
+
+    delete: async (token: string, id: number): Promise<void> => {
+      const response = await fetch(`${API_BASE_URL}/cursos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Erro ao excluir curso');
+    },
+  },
+
+  /**
+   * Disciplinas
+   */
+  disciplinas: {
+    list: async (token: string, ativas_only: boolean = true): Promise<any[]> => {
+      const response = await fetch(
+        `${API_BASE_URL}/disciplinas?ativas_only=${ativas_only}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao listar disciplinas');
+      return response.json();
+    },
+
+    create: async (token: string, data: { nome: string, ativa: boolean, curso_id?: number | null }): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/disciplinas`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao criar disciplina');
+      return response.json();
+    },
+
+    update: async (token: string, id: number, data: any): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/disciplinas/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao atualizar disciplina');
+      return response.json();
+    },
+
+    delete: async (token: string, id: number): Promise<void> => {
+      const response = await fetch(`${API_BASE_URL}/disciplinas/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Erro ao excluir disciplina');
+    },
+  },
+
+  /**
+   * Notas por Disciplina
+   */
+  notas: {
+    list: async (token: string, matricula: string, periodo_letivo?: string): Promise<any[]> => {
+      const params = periodo_letivo ? `?periodo_letivo=${periodo_letivo}` : '';
+      const response = await fetch(
+        `${API_BASE_URL}/alunos/${matricula}/notas${params}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao listar notas');
+      return response.json();
+    },
+
+    create: async (token: string, matricula: string, data: {
+      disciplina: string;
+      disciplina_id?: number | null;
+      periodo_letivo: string;
+      bimestre: number;
+      nota: number;
+      faltas_disciplina?: number;
+      situacao?: string;
+    }): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/alunos/${matricula}/notas`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao criar nota');
+      return response.json();
+    },
+
+    update: async (token: string, matricula: string, notaId: number, data: any): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/alunos/${matricula}/notas/${notaId}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao atualizar nota');
+      return response.json();
+    },
+
+    delete: async (token: string, matricula: string, notaId: number): Promise<void> => {
+      const response = await fetch(`${API_BASE_URL}/alunos/${matricula}/notas/${notaId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Erro ao excluir nota');
+    },
+
+    resumo: async (token: string, matricula: string): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/alunos/${matricula}/notas/resumo`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao obter resumo de notas');
+      return response.json();
+    },
+  },
+
+  /**
+   * Configurações do Sistema
+   */
+  configuracoes: {
+    list: async (token: string): Promise<any[]> => {
+      const response = await fetch(
+        `${API_BASE_URL}/configuracoes`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao listar configurações');
+      return response.json();
+    },
+
+    get: async (token: string, chave: string): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/configuracoes/${chave}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao obter configuração');
+      return response.json();
+    },
+
+    update: async (token: string, chave: string, valor: string): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/configuracoes/${chave}`,
         {
-          headers: { 'Authorization': `Bearer ${token}` },
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valor })
         }
       );
+      if (!response.ok) throw new Error('Erro ao atualizar configuração');
+      return response.json();
+    },
+
+    updateBatch: async (token: string, configs: Record<string, any>): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/configuracoes/batch`,
+        {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(configs)
+        }
+      );
+      if (!response.ok) throw new Error('Erro ao atualizar configurações em lote');
+      return response.json();
+    },
+  },
+
+  /**
+   * Comunicações / Notificações
+   */
+  comunicacoes: {
+    list: async (token: string, params?: {
+      tipo?: string;
+      canal?: string;
+      status?: string;
+      eh_lembrete?: boolean;
+      limit?: number;
+    }): Promise<any[]> => {
+      const searchParams = new URLSearchParams();
+      if (params?.tipo) searchParams.set('tipo', params.tipo);
+      if (params?.canal) searchParams.set('canal', params.canal);
+      if (params?.status) searchParams.set('status', params.status);
+      if (params?.eh_lembrete !== undefined) searchParams.set('eh_lembrete', String(params.eh_lembrete));
+      if (params?.limit) searchParams.set('limit', String(params.limit));
+      const query = searchParams.toString();
+      const response = await fetch(
+        `${API_BASE_URL}/comunicacoes${query ? '?' + query : ''}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao listar comunicações');
+      return response.json();
+    },
+
+    listByAluno: async (token: string, matricula: string, params?: {
+      tipo?: string;
+      canal?: string;
+      status?: string;
+      eh_lembrete?: boolean;
+      limit?: number;
+    }): Promise<any[]> => {
+      const searchParams = new URLSearchParams();
+      if (params?.tipo) searchParams.set('tipo', params.tipo);
+      if (params?.canal) searchParams.set('canal', params.canal);
+      if (params?.status) searchParams.set('status', params.status);
+      if (params?.eh_lembrete !== undefined) searchParams.set('eh_lembrete', String(params.eh_lembrete));
+      if (params?.limit) searchParams.set('limit', String(params.limit));
+      const query = searchParams.toString();
+      const response = await fetch(
+        `${API_BASE_URL}/alunos/${matricula}/comunicacoes${query ? '?' + query : ''}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao listar comunicações do aluno');
+      return response.json();
+    },
+
+    create: async (token: string, data: {
+      aluno_matricula: string;
+      destinatario_tipo: string;
+      destinatario_nome: string;
+      destinatario_contato?: string;
+      tipo_comunicacao: string;
+      canal?: string;
+      assunto?: string;
+      mensagem: string;
+      template_id?: string;
+      eh_lembrete?: boolean;
+      data_agendada?: string;
+    }): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/comunicacoes`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao criar comunicação');
+      return response.json();
+    },
+
+    update: async (token: string, id: number, data: any): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/comunicacoes/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao atualizar comunicação');
+      return response.json();
+    },
+
+    delete: async (token: string, id: number): Promise<void> => {
+      const response = await fetch(`${API_BASE_URL}/comunicacoes/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Erro ao excluir comunicação');
+    },
+
+    stats: async (token: string): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/comunicacoes/stats`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao obter estatísticas');
+      return response.json();
+    },
+
+    /**
+     * Endpoint unificado para gerar mensagem, enviar e registrar no histórico
+     */
+    disparar: async (token: string, data: {
+      aluno_matricula: string;
+      template_id: string;
+      contexto: Record<string, any>;
+      canal: string; // 'WHATSAPP', 'TELEGRAM', 'SISTEMA', 'EMAIL'
+      destinatario_tipo?: string;
+      destinatario_nome?: string;
+      destinatario_contato?: string;
+      modulo_origem?: string;
+      eh_lembrete?: boolean;
+      data_agendada?: string;
+    }): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/comunicacoes/disparar`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(data)
+      });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.detail || 'Erro ao obter stats de frequência');
+        throw new Error(error.detail || 'Erro ao disparar comunicação');
       }
 
+      return response.json();
+    },
+
+    /**
+     * Templates
+     */
+    templates: {
+      list: async (token: string, tipo?: string, canal?: string): Promise<any[]> => {
+        const params = new URLSearchParams();
+        if (tipo) params.set('tipo', tipo);
+        if (canal) params.set('canal', canal);
+        const response = await fetch(
+          `${API_BASE_URL}/templates-comunicacao${params.toString() ? '?' + params.toString() : ''}`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        if (!response.ok) throw new Error('Erro ao listar templates');
+        return response.json();
+      },
+
+      create: async (token: string, data: any): Promise<any> => {
+        const response = await fetch(`${API_BASE_URL}/templates-comunicacao`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Erro ao criar template');
+        return response.json();
+      },
+
+      update: async (token: string, id: number, data: any): Promise<any> => {
+        const response = await fetch(`${API_BASE_URL}/templates-comunicacao/${id}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Erro ao atualizar template');
+        return response.json();
+      },
+    },
+  },
+
+  /**
+   * Relatórios Gerenciais
+   */
+  relatorios: {
+    getAlunosRisco: async (token: string, nivel: string = 'ALTO'): Promise<any[]> => {
+      const response = await fetch(
+        `${API_BASE_URL}/relatorios/gerenciais/alunos-risco?nivel=${nivel}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao buscar alunos em risco');
+      return response.json();
+    },
+
+    getMapaCalor: async (token: string): Promise<any[]> => {
+      const response = await fetch(
+        `${API_BASE_URL}/relatorios/gerenciais/mapa-calor`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao buscar mapa de calor');
+      return response.json();
+    },
+
+    getEficacia: async (token: string): Promise<any[]> => {
+      const response = await fetch(
+        `${API_BASE_URL}/relatorios/gerenciais/eficacia`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao buscar dados de eficácia');
+      return response.json();
+    },
+  },
+
+  /**
+   * Jornada do Aluno (Timeline unificada)
+   */
+  jornada: {
+    get: async (token: string, matricula: string): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/alunos/${matricula}/jornada`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao obter jornada do aluno');
+      return response.json();
+    },
+  },
+
+  /**
+   * Atendimentos / Ocorrências
+   */
+  atendimentos: {
+    list: async (token: string, matricula: string, params?: {
+      tipo?: string;
+      status?: string;
+      prioridade?: string;
+      data_inicio?: string;
+      data_fim?: string;
+    }): Promise<any[]> => {
+      const searchParams = new URLSearchParams();
+      if (params?.tipo) searchParams.set('tipo', params.tipo);
+      if (params?.status) searchParams.set('status', params.status);
+      if (params?.prioridade) searchParams.set('prioridade', params.prioridade);
+      if (params?.data_inicio) searchParams.set('data_inicio', params.data_inicio);
+      if (params?.data_fim) searchParams.set('data_fim', params.data_fim);
+      const query = searchParams.toString();
+      const response = await fetch(
+        `${API_BASE_URL}/alunos/${matricula}/atendimentos${query ? '?' + query : ''}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao listar atendimentos');
+      return response.json();
+    },
+
+    listAll: async (token: string, params?: {
+      tipo?: string;
+      status?: string;
+      prioridade?: string;
+      data_inicio?: string;
+      data_fim?: string;
+      limit?: number;
+    }): Promise<any[]> => {
+      const searchParams = new URLSearchParams();
+      if (params?.tipo) searchParams.set('tipo', params.tipo);
+      if (params?.status) searchParams.set('status', params.status);
+      if (params?.prioridade) searchParams.set('prioridade', params.prioridade);
+      if (params?.data_inicio) searchParams.set('data_inicio', params.data_inicio);
+      if (params?.data_fim) searchParams.set('data_fim', params.data_fim);
+      if (params?.limit) searchParams.set('limit', String(params.limit));
+      const query = searchParams.toString();
+      const response = await fetch(
+        `${API_BASE_URL}/atendimentos${query ? '?' + query : ''}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao listar atendimentos');
+      return response.json();
+    },
+
+    create: async (token: string, matricula: string, data: {
+      tipo_atendimento: string;
+      status?: string;
+      data_atendimento: string;
+      descricao: string;
+      usuario_id: number;
+      hora_inicio?: string;
+      hora_fim?: string;
+      local?: string;
+      observacoes?: string;
+      necessita_encaminhamento?: boolean;
+      tipo_encaminhamento?: string;
+      data_encaminhamento?: string;
+      necessita_followup?: boolean;
+      data_proximo_atendimento?: string;
+      prioridade?: string;
+    }): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/alunos/${matricula}/atendimentos`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao criar atendimento');
+      return response.json();
+    },
+
+    update: async (token: string, matricula: string, id: number, data: any): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/alunos/${matricula}/atendimentos/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao atualizar atendimento');
+      return response.json();
+    },
+
+    delete: async (token: string, matricula: string, id: number): Promise<void> => {
+      const response = await fetch(`${API_BASE_URL}/alunos/${matricula}/atendimentos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Erro ao excluir atendimento');
+    },
+
+    stats: async (token: string): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/atendimentos/stats`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao obter estatísticas');
+      return response.json();
+    },
+
+    historico: async (token: string, atendimentoId: number): Promise<any[]> => {
+      const response = await fetch(
+        `${API_BASE_URL}/atendimentos/${atendimentoId}/historico`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao obter histórico');
+      return response.json();
+    },
+
+    alertasDemora: async (token: string, diasLimite: number = 30): Promise<any> => {
+      const response = await fetch(
+        `${API_BASE_URL}/atendimentos/alertas-demora?dias_limite=${diasLimite}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Erro ao obter alertas de demora');
       return response.json();
     },
   },

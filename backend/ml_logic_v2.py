@@ -32,90 +32,90 @@ PESOS_FATORES = {
     # ============================================
     # SCORE BASELINE (mínimo para todos os alunos)
     # ============================================
-    'score_base': 5,              # Todo aluno começa com 5% de risco base
+    'score_base': 8,              # Aumentado de 5 para 8 para maior sensibilidade
 
     # Fatores Acadêmicos (50% do peso total)
-    'frequencia_baixa_60': 35,      # Frequência < 60% (crítico)
-    'frequencia_baixa_75': 20,      # Frequência < 75% (alerta)
-    'frequencia_baixa_85': 8,       # Frequência < 85% (atenção)
+    'frequencia_baixa_60': 38,      # Aumentado de 35 para maior impacto crítico
+    'frequencia_baixa_75': 25,      # Aumentado de 20 para capturar mais casos
+    'frequencia_baixa_85': 10,      # Aumentado de 8 para atenção mais cedo
 
-    'media_critica_4': 30,          # Média < 4.0 (crítico)
-    'media_baixa_5': 20,            # Média < 5.0 (alerta)
-    'media_baixa_6': 12,            # Média < 6.0 (atenção)
+    'media_critica_4': 32,          # Aumentado de 30 para impacto crítico
+    'media_baixa_5': 22,            # Aumentado de 20 para alerta mais forte
+    'media_baixa_6': 15,            # Aumentado de 12 para detectar mais cedo
 
-    'reprovas_muitas_3': 15,        # > 3 reprovações
-    'reprovas_algumas_1': 8,        # > 1 reprovação
+    'reprovas_muitas_3': 18,        # Aumentado de 15 para mais impacto
+    'reprovas_algumas_1': 10,       # Aumentado de 8 para capturar reprovações
 
     # Fatores Socioeconômicos (25% do peso total)
-    'renda_muito_baixa_1000': 12,   # Renda < R$ 1000
-    'renda_baixa_1500': 6,          # Renda < R$ 1500
+    'renda_muito_baixa_1000': 15,   # Aumentado de 12 para maior impacto
+    'renda_baixa_1500': 8,          # Aumentado de 6
 
-    'trabalho_tempo_integral_40': 12,  # Trabalha > 40h
-    'trabalho_meio_periodo_20': 8,     # Trabalha > 20h
-    'trabalho_parcial': 4,             # Trabalha qualquer carga
+    'trabalho_tempo_integral_40': 15,  # Aumentado de 12
+    'trabalho_meio_periodo_20': 10,    # Aumentado de 8
+    'trabalho_parcial': 5,             # Aumentado de 4
 
     # Fatores de Deslocamento (10% do peso total)
-    'deslocamento_critico_120': 12, # > 120 min
-    'deslocamento_elevado_60': 6,   # > 60 min
+    'deslocamento_critico_120': 15, # Aumentado de 12
+    'deslocamento_elevado_60': 8,   # Aumentado de 6
 
-    'acesso_muito_dificil': 8,      # Acesso muito difícil
-    'acesso_dificil': 4,            # Acesso difícil
+    'acesso_muito_dificil': 10,     # Aumentado de 8
+    'acesso_dificil': 5,            # Aumentado de 4
 
     # Fatores de Infraestrutura (5% do peso total)
-    'sem_computador': 5,            # Não tem computador
-    'sem_internet': 3,              # Não tem internet
+    'sem_computador': 6,            # Aumentado de 5
+    'sem_internet': 4,              # Aumentado de 3
 
     # Fatores de Vulnerabilidade (5% do peso total)
-    'bolsa_familia': 4,             # Beneficiário
-    'primeira_geracao': 4,          # 1ª geração universidade
+    'bolsa_familia': 5,             # Aumentado de 4
+    'primeira_geracao': 5,          # Aumentado de 4
 
     # ============================================
-    # FATORES DE PROTEÇÃO (reduzem o risco)
+    # FATORES DE PROTEÇÃO (reduzem o risco) - Reduzidos para menor impacto
     # ============================================
-    'frequencia_excelente_90': -3,  # Frequência >= 90%
-    'frequencia_boa_85': -2,        # Frequência >= 85%
-    'media_excelente_8': -3,        # Média >= 8.0
-    'media_boa_7': -2,              # Média >= 7.0
-    'sem_reprovas': -2,             # Zero reprovações
-    'renda_alta_3000': -2,          # Renda >= R$ 3000
-    'nao_trabalha': -2,             # Não trabalha (foco total nos estudos)
+    'frequencia_excelente_90': -2,  # Reduzido de -3 para menos compensação
+    'frequencia_boa_85': -1,        # Reduzido de -2
+    'media_excelente_8': -2,        # Reduzido de -3
+    'media_boa_7': -1,              # Reduzido de -2
+    'sem_reprovas': -1,             # Reduzido de -2
+    'renda_alta_3000': -1,          # Reduzido de -2
+    'nao_trabalha': -1,             # Reduzido de -2
 
     # ============================================
     # FATORES PSICOSSOCIAIS (questionário)
     # ============================================
-    'psicossocial_intencao_evasao_alta': 15,   # Intenção evasão > 10/15
-    'psicossocial_intencao_evasao_media': 8,   # Intenção evasão > 7/15
-    'psicossocial_saude_mental_critica': 12,   # Saúde mental > 20/25
-    'psicossocial_saude_mental_ruim': 8,       # Saúde mental > 15/25
-    'psicossocial_integracao_baixa': 6,        # Integração social > 14/20
-    'psicossocial_conflitos_altos': 6,         # Conflitos > 14/20
-    'psicossocial_satisfacao_baixa': 6,        # Satisfação curso < 8/20 (invertido)
+    'psicossocial_intencao_evasao_alta': 18,   # Aumentado de 15
+    'psicossocial_intencao_evasao_media': 10,  # Aumentado de 8
+    'psicossocial_saude_mental_critica': 15,   # Aumentado de 12
+    'psicossocial_saude_mental_ruim': 10,      # Aumentado de 8
+    'psicossocial_integracao_baixa': 8,        # Aumentado de 6
+    'psicossocial_conflitos_altos': 8,         # Aumentado de 6
+    'psicossocial_satisfacao_baixa': 8,        # Aumentado de 6
 
     # Fatores de Tendência (Bônus/Malus)
-    'queda_frequencia_brusca': 15,  # Queda > 10%
-    'queda_frequencia_suave': 8,    # Queda 5-10%
-    'melhora_frequencia': -10,      # Melhora > 5%
+    'queda_frequencia_brusca': 18,  # Aumentado de 15
+    'queda_frequencia_suave': 10,   # Aumentado de 8
+    'melhora_frequencia': -8,       # Reduzido de -10 para menos compensação
 
-    'queda_media_brusca': 15,       # Queda > 2 pontos
-    'queda_media_suave': 8,         # Queda 1-2 pontos
-    'melhora_media': -10,           # Melhora > 1 ponto
+    'queda_media_brusca': 18,       # Aumentado de 15
+    'queda_media_suave': 10,        # Aumentado de 8
+    'melhora_media': -8,            # Reduzido de -10
 }
 
-# Combinações perigosas (multiplicadores)
+# Combinações perigosas (multiplicadores) - Ajustados para maior sensibilidade
 COMBINACOES_PERIGOSAS = {
-    'frequencia_baixa_e_trabalha': 1.3,      # Frequência baixa + Trabalha
-    'media_baixa_e_reprovas': 1.25,          # Média baixa + Reprovas
-    'trabalha_e_deslocamento_longo': 1.2,   # Trabalha + Deslocamento longo
-    'vulnerabilidade_multipla': 1.3,         # 3+ fatores vulnerabilidade
-    'queda_dupla': 1.4,                      # Queda frequência + média
+    'frequencia_baixa_e_trabalha': 1.35,      # Era 1.3 → aumentado
+    'media_baixa_e_reprovas': 1.3,            # Era 1.25 → aumentado
+    'trabalha_e_deslocamento_longo': 1.25,   # Era 1.2 → aumentado
+    'vulnerabilidade_multipla': 1.35,         # Era 1.3 → aumentado
+    'queda_dupla': 1.5,                       # Era 1.4 → aumentado para capturar quedas duplas
 }
 
-# Limiares de risco
+# Limiares de risco (ajustados para maior sensibilidade - Recall melhorado)
 LIMIARES_RISCO = {
-    'baixo_max': 30,
-    'medio_max': 60,
-    'alto_max': 85,
-    # > 85 = MUITO_ALTO
+    'baixo_max': 25,      # Era 30 → reduzido para capturar mais casos borderline
+    'medio_max': 50,      # Era 60 → reduzido para alertar mais cedo
+    'alto_max': 75,       # Era 85 → reduzido para detectar evasão mais cedo
+    # > 75 = MUITO_ALTO
 }
 
 
@@ -738,17 +738,17 @@ def fallback_logic_v2(aluno_data, db=None):
     # ============================================
 
     # Aplicar escala suave para scores muito altos (evita saturação em 100)
-    # Scores acima de 70 são "comprimidos" para manter diferenciação
+    # Ajustado: compressão reduzida para manter sensibilidade
     if score > 70:
-        score = 70 + (score - 70) * 0.4  # Reduz 60% do excesso acima de 70
+        score = 70 + (score - 70) * 0.6  # Era 0.4 → reduzido para manter scores mais altos
     if score > 85:
-        score = 85 + (score - 85) * 0.3  # Comprime ainda mais acima de 85
+        score = 85 + (score - 85) * 0.5  # Era 0.3 → reduzido para manter diferenciação
 
     # Garantir que o score fique entre 0 e 100
     score = max(0, min(score, 100))
 
     # Se após fatores de proteção o score ficou abaixo do baseline, manter pelo menos baseline
-    baseline = PESOS_FATORES.get('score_base', 5)
+    baseline = PESOS_FATORES.get('score_base', 8)
     if score < baseline:
         score = baseline
 

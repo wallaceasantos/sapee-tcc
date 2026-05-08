@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, Date, DECIMAL
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum, DateTime, Text, Date, Time, DECIMAL
+from sqlalchemy.orm import relationship, foreign, remote
 from sqlalchemy.sql import func
 import database
 import enum
@@ -60,6 +60,55 @@ class PrioridadePlano(str, enum.Enum):
     ALTA = "ALTA"
     URGENTE = "URGENTE"
 
+class SituacaoNota(str, enum.Enum):
+    APROVADO = "APROVADO"
+    REPROVADO = "REPROVADO"
+    CURSANDO = "CURSANDO"
+
+class DestinatarioTipo(str, enum.Enum):
+    RESPONSAVEL = "RESPONSAVEL"
+    ALUNO = "ALUNO"
+    COORDENADOR = "COORDENADOR"
+    PROFESSOR = "PROFESSOR"
+
+class CanalComunicacao(str, enum.Enum):
+    WHATSAPP = "WHATSAPP"
+    SMS = "SMS"
+    EMAIL = "EMAIL"
+    SISTEMA = "SISTEMA"
+
+class TipoComunicacao(str, enum.Enum):
+    FALTAS = "FALTAS"
+    RISCO = "RISCO"
+    ATENDIMENTO = "ATENDIMENTO"
+    LEMBRETE = "LEMBRETE"
+    MANUAL = "MANUAL"
+    ENCAMINHAMENTO = "ENCAMINHAMENTO"
+
+class StatusComunicacao(str, enum.Enum):
+    PENDENTE = "PENDENTE"
+    ENVIADA = "ENVIADA"
+    ENTREGUE = "ENTREGUE"
+    LIDA = "LIDA"
+    FALHA = "FALHA"
+    CANCELADA = "CANCELADA"
+
+class TipoAtendimento(str, enum.Enum):
+    PSICOLOGICO = "PSICOLOGICO"
+    SOCIAL = "SOCIAL"
+    DISCIPLINAR = "DISCIPLINAR"
+    ACADEMICO = "ACADEMICO"
+    SAUDE = "SAUDE"
+    ENCAMINHAMENTO_EXTERNO = "ENCAMINHAMENTO_EXTERNO"
+    CONVERSA_INFORMAL = "CONVERSA_INFORMAL"
+
+class StatusAtendimento(str, enum.Enum):
+    AGENDADO = "AGENDADO"
+    REALIZADO = "REALIZADO"
+    CANCELADO = "CANCELADO"
+    EM_ANDAMENTO = "EM_ANDAMENTO"
+    CONCLUIDO = "CONCLUIDO"
+
 # ============================================
 # MODELS
 # ============================================
@@ -90,6 +139,7 @@ class Curso(Base):
     # Relationships
     alunos = relationship("Aluno", back_populates="curso")
     coordenador = relationship("Usuario", foreign_keys=[coordenador_id])
+    disciplinas = relationship("Disciplina", back_populates="curso", cascade="all, delete-orphan")
 
 class Usuario(Base):
     """Usuários do sistema"""
@@ -186,6 +236,7 @@ class Aluno(Base):
     predicoes = relationship("Predicao", back_populates="aluno", cascade="all, delete-orphan")
     frequencias = relationship("FrequenciaMensal", back_populates="aluno", cascade="all, delete-orphan")
     intervencoes = relationship("Intervencao", back_populates="aluno", cascade="all, delete-orphan")
+    notas_disciplina = relationship("NotaDisciplina", back_populates="aluno", cascade="all, delete-orphan")
 
 class Predicao(Base):
     """Predições de risco de evasão"""
@@ -201,6 +252,30 @@ class Predicao(Base):
 
     # Relationships
     aluno = relationship("Aluno", back_populates="predicoes")
+
+
+class NotaDisciplina(Base):
+    """
+    Notas do aluno por disciplina e período (bimestre/semestre).
+    Permite identificar padrões de reprovação em disciplinas específicas.
+    """
+    __tablename__ = "notas_disciplina"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    aluno_matricula = Column(String(20), ForeignKey("alunos.matricula"), nullable=False, index=True)
+    disciplina = Column(String(100), nullable=False, index=True, comment="Nome da disciplina")
+    disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable=True, comment="FK para disciplina padronizada")
+    periodo_letivo = Column(String(20), nullable=False, index=True, comment="Ex: 2024-1, 2024-2, 2025-1")
+    bimestre = Column(Integer, nullable=False, comment="1, 2, 3, 4 (ou semestre: 1, 2)")
+    nota = Column(DECIMAL(4,2), nullable=False, comment="Nota do aluno nesta disciplina/período")
+    faltas_disciplina = Column(Integer, default=0, comment="Faltas apenas nesta disciplina")
+    situacao = Column(Enum(SituacaoNota), default=SituacaoNota.CURSANDO, comment="Situação final")
+    criado_at = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    aluno = relationship("Aluno", back_populates="notas_disciplina")
+    disciplina_obj = relationship("Disciplina")
 
 class PredicaoHistorico(Base):
     """
@@ -365,6 +440,7 @@ class RegistroFaltasDiarias(Base):
     id = Column(Integer, primary_key=True, index=True)
     aluno_matricula = Column(String(20), ForeignKey("alunos.matricula"), nullable=False, index=True)
     disciplina = Column(String(100), nullable=False, index=True)
+    disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable=True, index=True, comment="ID da disciplina padronizada")
     data = Column(Date, nullable=False, index=True)
     justificada = Column(Boolean, default=False, index=True)
     motivo_justificativa = Column(Text)
@@ -376,6 +452,7 @@ class RegistroFaltasDiarias(Base):
     # Relationships
     aluno = relationship("Aluno", back_populates="faltas")
     usuario = relationship("Usuario")
+    disciplina_obj = relationship("Disciplina", back_populates="faltas_registradas")
 
 
 class AlertaFaltasConsecutivas(Base):
@@ -608,11 +685,196 @@ class Egresso(Base):
     data_atualizacao = Column(DateTime(timezone=True), onupdate=func.now(), comment="Data da última atualização")
     atualizado_por = Column(Integer, ForeignKey("usuarios.id"), comment="ID do usuário que atualizou")
     observacoes = Column(Text, comment="Observações adicionais")
-    
+
     # Relationships
     aluno = relationship("Aluno")
     usuario_cadastro = relationship("Usuario", foreign_keys=[cadastrado_por])
 
+
+class Atendimento(Base):
+    """
+    Registro de atendimentos/ocorrências individuais.
+    Inclui: psicológico, social, disciplinar, acadêmico, saúde,
+    encaminhamentos externos e conversas informais.
+    NOTA: Tabela criada manualmente via create_atendimentos.sql
+    para garantir compatibilidade de charset/collate com a tabela alunos.
+    """
+    __tablename__ = "atendimentos"
+    __table_args__ = {'extend_existing': True}  # Tabela criada via SQL migration
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    aluno_matricula = Column(String(20), nullable=False, index=True, comment="Matrícula do aluno")
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True, comment="Profissional que registrou")
+    tipo_atendimento = Column(Enum(TipoAtendimento), nullable=False, index=True)
+    status = Column(Enum(StatusAtendimento), default=StatusAtendimento.AGENDADO, index=True)
+
+    data_atendimento = Column(Date, nullable=False, index=True, comment="Data do atendimento")
+    hora_inicio = Column(Time, nullable=True, comment="Horário de início")
+    hora_fim = Column(Time, nullable=True, comment="Horário de término")
+    local = Column(String(100), nullable=True, comment="Local do atendimento")
+
+    descricao = Column(Text, nullable=False, comment="Descrição do atendimento/ocorrência")
+    observacoes = Column(Text, comment="Observações adicionais")
+
+    # Encaminhamentos
+    necessita_encaminhamento = Column(Boolean, default=False, comment="Precisa de encaminhamento externo")
+    status_encaminhamento = Column(Enum('SOLICITADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'CANCELADO'), nullable=True, comment="Status do fluxo de encaminhamento")
+    tipo_encaminhamento = Column(String(100), nullable=True, comment="Tipo: CAPS, UBS, Conselho Tutelar, etc.")
+    data_encaminhamento = Column(Date, nullable=True)
+
+    # Follow-up
+    necessita_followup = Column(Boolean, default=False, comment="Precisa de acompanhamento")
+    data_proximo_atendimento = Column(Date, nullable=True, comment="Próximo agendamento")
+
+    # Prioridade
+    prioridade = Column(Enum('BAIXA', 'MEDIA', 'ALTA', 'URGENTE', name='prioridade_atendimento_enum'),
+                       default='MEDIA', comment="Nível de prioridade")
+
+    criado_at = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    aluno = relationship("Aluno", primaryjoin="Aluno.matricula == foreign(Atendimento.aluno_matricula)")
+    usuario = relationship("Usuario")
+    historico_status = relationship("HistoricoEncaminhamento", back_populates="atendimento", cascade="all, delete-orphan")
+
+
+class HistoricoEncaminhamento(Base):
+    """
+    Registro de mudanças de status em encaminhamentos externos.
+    Permite auditoria completa do ciclo de vida do atendimento.
+    """
+    __tablename__ = "historico_encaminhamento"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    atendimento_id = Column(Integer, ForeignKey("atendimentos.id"), nullable=False, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True, comment="Profissional que realizou a mudança")
+    status_anterior = Column(Enum('SOLICITADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'CANCELADO'), nullable=True)
+    status_novo = Column(Enum('SOLICITADO', 'EM_ATENDIMENTO', 'CONCLUIDO', 'CANCELADO'), nullable=False)
+    observacoes = Column(Text, comment="Motivo ou observação sobre a mudança")
+    data_mudanca = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    atendimento = relationship("Atendimento", back_populates="historico_status")
+    usuario = relationship("Usuario")
+
+
+class TemplateComunicacao(Base):
+    """
+    Templates de mensagens para comunicações automáticas e manuais.
+    Suporta variáveis como {nome_aluno}, {qtd_faltas}, {disciplina}, etc.
+    """
+    __tablename__ = "templates_comunicacao"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    codigo = Column(String(50), unique=True, nullable=False, index=True, comment="Identificador único do template")
+    nome = Column(String(100), nullable=False, comment="Nome descritivo do template")
+    tipo_comunicacao = Column(Enum(TipoComunicacao), nullable=False, index=True)
+    canal = Column(Enum(CanalComunicacao), nullable=False, default=CanalComunicacao.SISTEMA, index=True)
+    assunto = Column(String(200), nullable=True, comment="Assunto (para email)")
+    conteudo = Column(Text, nullable=False, comment="Conteúdo com variáveis")
+    ativo = Column(Boolean, default=True)
+    criado_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ConfiguracaoSistema(Base):
+    """
+    Configurações globais do sistema e dados da instituição.
+    Armazenadas no formato chave-valor.
+    """
+    __tablename__ = "configuracoes_sistema"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    chave = Column(String(50), unique=True, nullable=False, index=True, comment="Identificador único")
+    valor = Column(Text, nullable=True, comment="Valor da configuração")
+    descricao = Column(String(255), nullable=True, comment="Descrição")
+    criado_at = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class Comunicacao(Base):
+    """
+    Registro de todas as comunicações e notificações do sistema.
+    Inclui: notificações automáticas, mensagens manuais, lembretes agendados.
+    """
+    __tablename__ = "comunicacoes"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    aluno_matricula = Column(String(20), ForeignKey("alunos.matricula"), nullable=False, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True, index=True, comment="Profissional que enviou (NULL = automático)")
+    destinatario_tipo = Column(Enum(DestinatarioTipo), nullable=False)
+    destinatario_nome = Column(String(100), nullable=False, comment="Nome do destinatário")
+    destinatario_contato = Column(String(50), nullable=True, comment="Telefone ou email do destinatário")
+    
+    tipo_comunicacao = Column(Enum(TipoComunicacao), nullable=False)
+    canal = Column(Enum(CanalComunicacao), nullable=False, default=CanalComunicacao.SISTEMA)
+    assunto = Column(String(200), nullable=True, comment="Assunto da mensagem")
+    mensagem = Column(Text, nullable=False, comment="Conteúdo da mensagem (com variáveis preenchidas)")
+    template_id = Column(String(50), nullable=True, comment="ID do template usado")
+    
+    status = Column(Enum(StatusComunicacao), nullable=False, default=StatusComunicacao.PENDENTE)
+    data_envio = Column(DateTime(timezone=True), nullable=True)
+    data_leitura = Column(DateTime(timezone=True), nullable=True)
+    erro_motivo = Column(Text, nullable=True, comment="Motivo da falha, se houver")
+    
+    eh_lembrete = Column(Boolean, default=False)
+    data_agendada = Column(DateTime(timezone=True), nullable=True, comment="Data/hora para envio agendado")
+    data_envio_efetivo = Column(DateTime(timezone=True), nullable=True, comment="Quando realmente foi enviado")
+    
+    recebeu_resposta = Column(Boolean, default=False)
+    resposta_conteudo = Column(Text, nullable=True, comment="Conteúdo da resposta do destinatário")
+    data_resposta = Column(DateTime(timezone=True), nullable=True)
+    
+    criado_at = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    aluno = relationship("Aluno")
+    usuario = relationship("Usuario")
+
+
+class Disciplina(Base):
+    """Cadastro de Disciplinas para padronização do sistema"""
+    __tablename__ = "disciplinas"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    nome = Column(String(100), unique=True, nullable=False, index=True, comment="Nome da disciplina")
+    ativa = Column(Boolean, default=True, comment="Se a disciplina está disponível para seleção")
+    curso_id = Column(Integer, ForeignKey("cursos.id"), nullable=True, comment="ID do curso vinculado (NULL = genérica)")
+    criado_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    curso = relationship("Curso", back_populates="disciplinas")
+    faltas_registradas = relationship("RegistroFaltasDiarias", back_populates="disciplina_obj", cascade="all, delete-orphan")
+    professores = relationship("DisciplinaProfessor", back_populates="disciplina", cascade="all, delete-orphan")
+
+
+class DisciplinaProfessor(Base):
+    """Vínculo entre professores e suas disciplinas"""
+    __tablename__ = "disciplina_professor"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable=False, index=True)
+    curso_id = Column(Integer, ForeignKey("cursos.id"), nullable=True, comment="Cópia para facilitar filtros")
+    criado_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    usuario = relationship("Usuario")
+    disciplina = relationship("Disciplina", back_populates="professores")
+    curso = relationship("Curso")
+
+    __table_args__ = (
+        # Impedir duplicar mesmo professor na mesma disciplina
+        {'mysql_charset': 'utf8mb4'},
+    )
+
+    def __repr__(self):
+        return f"<DisciplinaProfessor(usuario_id={self.usuario_id}, disciplina_id={self.disciplina_id})>"
+
+
+# Adicionar relationship na classe Usuario
+Usuario.disciplinas = relationship("DisciplinaProfessor", back_populates="usuario", cascade="all, delete-orphan")
 
 # Adicionar relationships nas classes existentes
 Curso.planos_acao = relationship("PlanosAcao", back_populates="curso", cascade="all, delete-orphan")
@@ -620,4 +882,5 @@ Curso.metas_semestrais = relationship("MetasSemestrais", back_populates="curso",
 Aluno.metas = relationship("AlunoMeta", back_populates="aluno", cascade="all, delete-orphan")
 Aluno.faltas = relationship("RegistroFaltasDiarias", back_populates="aluno", cascade="all, delete-orphan")
 Aluno.alertas_faltas = relationship("AlertaFaltasConsecutivas", back_populates="aluno", cascade="all, delete-orphan")
+Aluno.atendimentos = relationship("Atendimento", primaryjoin="Aluno.matricula == foreign(Atendimento.aluno_matricula)", back_populates="aluno", cascade="all, delete-orphan")
 Aluno.questionario_psicossocial = relationship("QuestionarioPsicossocial", back_populates="aluno", uselist=False, cascade="all, delete-orphan")

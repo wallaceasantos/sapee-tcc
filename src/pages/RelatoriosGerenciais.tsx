@@ -1,321 +1,392 @@
 /**
- * Página de Relatórios Gerenciais
- * SAPEE DEWAS - Sistema de Relatórios com Exportação
+ * Página de Relatórios Gerenciais - SAPEE DEWAS
+ * 
+ * Funcionalidades:
+ * - Relatório de Alunos em Risco (Exportação Excel/PDF)
+ * - Mapa de Calor de Risco por Zona Residencial (Gráfico + Exportação)
+ * - Relatório de Eficácia de Intervenções
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Download, 
-  Calendar, 
-  Filter,
-  Users,
-  AlertTriangle,
-  CheckCircle,
-  TrendingUp
-} from 'lucide-react';
+import { FileSpreadsheet, FileText, Download, AlertTriangle, Map, BarChart3, TrendingUp, Activity, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../utils';
+import ResponsiveTable from '../components/ResponsiveTable';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../services/AuthContext';
+import api from '../services/api';
+import { 
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
+} from 'recharts';
 
-interface RelatorioGeral {
-  periodo: { inicio: string; fim: string };
-  resumo: {
-    total_alunos: number;
-    risco_alto: number;
-    risco_medio: number;
-    risco_baixo: number;
-    total_intervencoes: number;
-    intervencoes_pendentes: number;
-    intervencoes_concluidas: number;
-    total_alertas_faltas: number;
-    alertas_faltas_pendentes: number;
-  };
-  indicadores: {
-    percentual_risco_alto: number;
-    taxa_conclusao_intervencao: number;
-    taxa_alertas_resolvidos: number;
-  };
-}
+// --- Dependências externas (npm install xlsx jspdf jspdf-autotable) ---
+// @ts-ignore
+import * as XLSX from 'xlsx';
+// @ts-ignore
+import jsPDF from 'jspdf';
+// @ts-ignore
+import 'jspdf-autotable';
+
+const CORES_ZONA: Record<string, string> = {
+    'Norte': '#EF4444',
+    'Sul': '#3B82F6',
+    'Leste': '#10B981',
+    'Oeste': '#F59E0B',
+    'Centro': '#8B5CF6',
+    'Não informada': '#9CA3AF',
+};
 
 export default function RelatoriosGerenciais() {
-  const { addToast } = useToast();
-  const { token } = useAuth();
+    const { token } = useAuth();
+    const { addToast } = useToast();
 
-  const [relatorio, setRelatorio] = useState<RelatorioGeral | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
-  const [tipoRelatorio, setTipoRelatorio] = useState('geral');
-  const [dadosRelatorio, setDadosRelatorio] = useState<any>(null);
-
-  useEffect(() => {
-    const hoje = new Date();
-    const trintaDiasAtras = new Date(hoje.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const [abaAtiva, setAbaAtiva] = useState<'risco' | 'mapa' | 'eficacia'>('risco');
     
-    setDataInicio(trintaDiasAtras.toISOString().split('T')[0]);
-    setDataFim(hoje.toISOString().split('T')[0]);
-  }, []);
-
-  const carregarRelatorio = async () => {
-    if (!token || !dataInicio || !dataFim) {
-      addToast({ type: 'warning', title: 'Campos obrigatórios', message: 'Preencha o período do relatório' });
-      return;
-    }
-
-    setIsLoading(true);
+    // Estados de Dados
+    const [alunosRisco, setAlunosRisco] = useState<any[]>([]);
+    const [mapaCalor, setMapaCalor] = useState<any[]>([]);
+    const [eficacia, setEficacia] = useState<any[]>([]);
     
-    try {
-      const endpoint = getEndpoint(tipoRelatorio);
-      const params = new URLSearchParams({ data_inicio: dataInicio, data_fim: dataFim });
+    const [loading, setLoading] = useState(true);
+    const [filtroNivel, setFiltroNivel] = useState<string>('ALTO'); // ALTO, MUITO_ALTO, TODOS
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${endpoint}?${params.toString()}`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
+    useEffect(() => {
+        carregarDados();
+    }, [filtroNivel]);
 
-      if (response.ok) {
-        const data = await response.json();
-        setDadosRelatorio(data);
-        
-        if (tipoRelatorio === 'geral') {
-          setRelatorio(data);
+    const carregarDados = async () => {
+        if (!token) return;
+        setLoading(true);
+        try {
+            // 1. Alunos em Risco
+            const risco = await api.relatorios.getAlunosRisco(token, filtroNivel);
+            setAlunosRisco(risco);
+
+            // 2. Mapa de Calor
+            const mapa = await api.relatorios.getMapaCalor(token);
+            setMapaCalor(mapa);
+
+            // 3. Eficácia
+            const efic = await api.relatorios.getEficacia(token);
+            setEficacia(efic);
+        } catch (error: any) {
+            addToast({ type: 'error', title: 'Erro', message: error.message });
+        } finally {
+            setLoading(false);
         }
-
-        addToast({ type: 'success', title: 'Relatório carregado', message: 'Dados atualizados com sucesso' });
-      } else {
-        throw new Error('Erro ao carregar relatório');
-      }
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message || 'Erro ao carregar relatório' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getEndpoint = (tipo: string) => {
-    const endpoints: Record<string, string> = {
-      'geral': '/relatorios/geral',
-      'alunos-risco': '/relatorios/alunos-risco',
-      'intervencoes': '/relatorios/intervencoes',
-      'faltas': '/relatorios/faltas-alertas'
     };
-    return endpoints[tipo] || endpoints['geral'];
-  };
 
-  const handleExportPDF = () => {
-    if (!dadosRelatorio) {
-      addToast({ type: 'warning', title: 'Sem dados', message: 'Carregue o relatório antes de exportar' });
-      return;
-    }
-    window.print();
-    addToast({ type: 'success', title: 'Exportando', message: 'Selecione "Salvar como PDF" no diálogo de impressão' });
-  };
+    // --- Funções de Exportação ---
 
-  const handleExportExcel = () => {
-    if (!dadosRelatorio) {
-      addToast({ type: 'warning', title: 'Sem dados', message: 'Carregue o relatório antes de exportar' });
-      return;
-    }
+    const exportarAlunosRiscoExcel = () => {
+        const dadosFormatados = alunosRisco.map(a => ({
+            Matrícula: a.matricula,
+            Nome: a.nome,
+            Curso: a.curso,
+            Turno: a.turno,
+            "Nível de Risco": a.nivel_risco,
+            "Score": a.score_risco + '%',
+            "Fatores": a.fatores,
+            "Data Predição": new Date(a.ultima_predicao).toLocaleDateString('pt-BR')
+        }));
 
-    const csv = criarCSV(dadosRelatorio);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `relatorio_${tipoRelatorio}_${dataInicio}_${dataFim}.csv`;
-    link.click();
+        const ws = XLSX.utils.json_to_sheet(dadosFormatados);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Alunos em Risco");
+        XLSX.writeFile(wb, `Relatorio_Alunos_Risco_${new Date().toISOString().split('T')[0]}.xlsx`);
+        addToast({ type: 'success', title: 'Sucesso', message: 'Excel gerado com sucesso' });
+    };
 
-    addToast({ type: 'success', title: 'Exportado', message: 'Relatório exportado para Excel/CSV' });
-  };
+    const exportarAlunosRiscoPDF = () => {
+        const doc = new jsPDF();
+        doc.text("Relatório de Alunos em Risco - SAPEE DEWAS", 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} | Filtro: ${filtroNivel}`, 14, 22);
 
-  const criarCSV = (dados: any) => {
-    if (tipoRelatorio === 'geral') {
-      return [
-        ['Métrica', 'Valor'],
-        ['Período', `${dados.periodo.inicio} até ${dados.periodo.fim}`],
-        ['Total de Alunos', dados.resumo.total_alunos],
-        ['Risco Alto', dados.resumo.risco_alto],
-        ['Risco Médio', dados.resumo.risco_medio],
-        ['Risco Baixo', dados.resumo.risco_baixo],
-        ['Total Intervenções', dados.resumo.total_intervencoes],
-        ['Intervenções Pendentes', dados.resumo.intervencoes_pendentes],
-        ['Intervenções Concluídas', dados.resumo.intervencoes_concluidas],
-        ['Total Alertas Faltas', dados.resumo.total_alertas_faltas],
-        ['Alertas Pendentes', dados.resumo.alertas_faltas_pendentes],
-        ['% Risco Alto', dados.indicadores.percentual_risco_alto + '%'],
-        ['Taxa Conclusão', dados.indicadores.taxa_conclusao_intervencao + '%'],
-        ['Taxa Alertas Resolvidos', dados.indicadores.taxa_alertas_resolvidos + '%']
-      ].map(row => row.join(',')).join('\n');
-    }
-    return '';
-  };
+        const colunas = ["Nome", "Matrícula", "Curso", "Risco", "Score", "Fatores"];
+        const dados = alunosRisco.map(a => [
+            a.nome,
+            a.matricula,
+            a.curso,
+            a.nivel_risco,
+            a.score_risco + '%',
+            a.fatores ? (a.fatores.length > 40 ? a.fatores.substring(0, 40) + '...' : a.fatores) : '-'
+        ]);
 
-  return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">Relatórios Gerenciais</h1>
-          <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400 mt-1">Gere e exporte relatórios do sistema</p>
-        </div>
-      </div>
+        // @ts-ignore
+        doc.autoTable({
+            head: [colunas],
+            body: dados,
+            startY: 30,
+            theme: 'grid',
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [239, 68, 68] } // Vermelho
+        });
+        doc.save(`Relatorio_Alunos_Risco_${new Date().toISOString().split('T')[0]}.pdf`);
+        addToast({ type: 'success', title: 'Sucesso', message: 'PDF gerado com sucesso' });
+    };
 
-      {/* Filtros */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6"
-      >
-        <div className="flex items-center gap-2 mb-3 md:mb-4">
-          <Filter className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
-          <h2 className="text-base md:text-lg font-bold text-gray-800 dark:text-white">Filtros do Relatório</h2>
-        </div>
+    const exportarMapaExcel = () => {
+        const dadosFormatados = mapaCalor.map(m => ({
+            Zona: m.zona,
+            "Total Alunos em Risco": m.total_alunos,
+            "Média de Risco (%)": m.media_risco + '%'
+        }));
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
-          <div>
-            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">Tipo de Relatório</label>
-            <select
-              value={tipoRelatorio}
-              onChange={(e) => setTipoRelatorio(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white"
-            >
-              <option value="geral" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">Relatório Geral</option>
-              <option value="alunos-risco" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">Alunos por Risco</option>
-              <option value="intervencoes" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">Intervenções</option>
-              <option value="faltas" className="bg-white dark:bg-slate-800 text-gray-900 dark:text-white">Alertas de Faltas</option>
-            </select>
-          </div>
+        const ws = XLSX.utils.json_to_sheet(dadosFormatados);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Mapa de Calor");
+        XLSX.writeFile(wb, `Relatorio_Mapa_Calor_${new Date().toISOString().split('T')[0]}.xlsx`);
+        addToast({ type: 'success', title: 'Sucesso', message: 'Excel gerado com sucesso' });
+    };
 
-          <div>
-            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">Data Início</label>
-            <input
-              type="date"
-              value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">Data Fim</label>
-            <input
-              type="date"
-              value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div className="flex items-end">
-            <button
-              onClick={carregarRelatorio}
-              disabled={isLoading}
-              className="w-full py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Carregando...</>
-              ) : (
-                <><Calendar className="w-5 h-5" /> Gerar Relatório</>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {dadosRelatorio && (
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t dark:border-slate-700">
-            <button onClick={handleExportPDF} className="flex-1 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-900/30 transition-all flex items-center justify-center gap-2 min-h-11">
-              <FileText className="w-4 h-4 md:w-5 md:h-5" /> Exportar PDF
-            </button>
-            <button onClick={handleExportExcel} className="flex-1 py-3 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-xl font-bold hover:bg-green-100 dark:hover:bg-green-900/30 transition-all flex items-center justify-center gap-2 min-h-11">
-              <Download className="w-4 h-4 md:w-5 md:h-5" /> Exportar Excel
-            </button>
-          </div>
-        )}
-      </motion.div>
-
-      {/* Loading */}
-      {isLoading && (
-        <div className="text-center py-12">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
-          <p className="text-gray-500 dark:text-slate-400 mt-4">Carregando relatório...</p>
-        </div>
-      )}
-
-      {/* Conteúdo do Relatório */}
-      {!isLoading && relatorio && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 md:space-y-6">
-          {/* Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            <StatCard title="Total de Alunos" value={relatorio.resumo.total_alunos} icon={Users} color="blue" />
-            <StatCard title="Alunos em Risco Alto" value={relatorio.resumo.risco_alto} icon={AlertTriangle} color="red" trend={`${relatorio.indicadores.percentual_risco_alto}% do total`} />
-            <StatCard title="Intervenções Concluídas" value={relatorio.resumo.intervencoes_concluidas} icon={CheckCircle} color="green" trend={`${relatorio.indicadores.taxa_conclusao_intervencao}% de conclusão`} />
-          </div>
-
-          {/* Tabela */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">Detalhamento do Relatório</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Período: {new Date(relatorio.periodo.inicio).toLocaleDateString('pt-BR')} até {new Date(relatorio.periodo.fim).toLocaleDateString('pt-BR')}
-              </p>
+    return (
+        <div className="p-4 md:p-6 space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                        <BarChart3 className="w-7 h-7 md:w-8 md:h-8 text-indigo-600" />
+                        Relatórios Gerenciais
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                        Análise de dados para tomada de decisão estratégica
+                    </p>
+                </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Métrica</th>
-                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Valor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  <tr className="hover:bg-gray-50"><td className="px-6 py-4 text-sm font-medium text-gray-900">Risco Médio</td><td className="px-6 py-4 text-sm text-gray-900">{relatorio.resumo.risco_medio}</td></tr>
-                  <tr className="hover:bg-gray-50"><td className="px-6 py-4 text-sm font-medium text-gray-900">Risco Baixo</td><td className="px-6 py-4 text-sm text-gray-900">{relatorio.resumo.risco_baixo}</td></tr>
-                  <tr className="hover:bg-gray-50"><td className="px-6 py-4 text-sm font-medium text-gray-900">Intervenções Pendentes</td><td className="px-6 py-4 text-sm text-gray-900">{relatorio.resumo.intervencoes_pendentes}</td></tr>
-                  <tr className="hover:bg-gray-50"><td className="px-6 py-4 text-sm font-medium text-gray-900">Alertas de Faltas</td><td className="px-6 py-4 text-sm text-gray-900">{relatorio.resumo.total_alertas_faltas}</td></tr>
-                  <tr className="hover:bg-gray-50"><td className="px-6 py-4 text-sm font-medium text-gray-900">Alertas Pendentes</td><td className="px-6 py-4 text-sm text-gray-900">{relatorio.resumo.alertas_faltas_pendentes}</td></tr>
-                </tbody>
-              </table>
+
+            {/* Seletor de Abas */}
+            <div className="flex gap-2 border-b border-gray-200 dark:border-slate-700 overflow-x-auto pb-1">
+                <button
+                    onClick={() => setAbaAtiva('risco')}
+                    className={cn(
+                        "px-4 py-3 font-bold text-sm transition-all border-b-2 -mb-[2px] whitespace-nowrap",
+                        abaAtiva === 'risco'
+                            ? "border-red-600 text-red-600 dark:text-red-400"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
+                    )}
+                >
+                    <AlertTriangle className="w-4 h-4 inline mr-2" /> Alunos em Risco
+                </button>
+                <button
+                    onClick={() => setAbaAtiva('mapa')}
+                    className={cn(
+                        "px-4 py-3 font-bold text-sm transition-all border-b-2 -mb-[2px] whitespace-nowrap",
+                        abaAtiva === 'mapa'
+                            ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
+                    )}
+                >
+                    <Map className="w-4 h-4 inline mr-2" /> Mapa de Calor (Zonas)
+                </button>
+                <button
+                    onClick={() => setAbaAtiva('eficacia')}
+                    className={cn(
+                        "px-4 py-3 font-bold text-sm transition-all border-b-2 -mb-[2px] whitespace-nowrap",
+                        abaAtiva === 'eficacia'
+                            ? "border-green-600 text-green-600 dark:text-green-400"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
+                    )}
+                >
+                    <TrendingUp className="w-4 h-4 inline mr-2" /> Eficácia Intervenções
+                </button>
             </div>
-          </div>
-        </motion.div>
-      )}
-    </div>
-  );
-}
 
-function StatCard({ title, value, icon: Icon, color, trend }: {
-  title: string;
-  value: number | string;
-  icon: any;
-  color: string;
-  trend?: string;
-}) {
-  const colorClasses: Record<string, string> = {
-    blue: 'from-blue-500 to-blue-600',
-    red: 'from-red-500 to-red-600',
-    green: 'from-green-500 to-green-600',
-    amber: 'from-amber-500 to-amber-600'
-  };
+            {/* Conteúdo das Abas */}
+            {loading ? (
+                <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+            ) : (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                    
+                    {/* ABA ALUNOS EM RISCO */}
+                    {abaAtiva === 'risco' && (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800">
+                                <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                                    Lista de Alunos ({alunosRisco.length})
+                                </h3>
+                                <div className="flex gap-2">
+                                    <select 
+                                        value={filtroNivel} 
+                                        onChange={(e) => setFiltroNivel(e.target.value)}
+                                        className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm min-h-[44px]"
+                                    >
+                                        <option value="ALTO">Risco ALTO</option>
+                                        <option value="MUITO_ALTO">Risco MUITO ALTO</option>
+                                        <option value="TODOS">Todos</option>
+                                    </select>
+                                    <button onClick={exportarAlunosRiscoExcel} className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 min-h-[44px]">
+                                        <FileSpreadsheet className="w-4 h-4" /> Excel
+                                    </button>
+                                    <button onClick={exportarAlunosRiscoPDF} className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 min-h-[44px]">
+                                        <FileText className="w-4 h-4" /> PDF
+                                    </button>
+                                </div>
+                            </div>
 
-  return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className={cn("p-3 rounded-xl bg-linear-to-br", colorClasses[color] || colorClasses.blue)}>
-          <Icon className="w-6 h-6 text-white" />
+                            <ResponsiveTable
+                                data={alunosRisco}
+                                keyExtractor={(a, i) => `${i}-${a.matricula || a.id}`}
+                                emptyMessage="Nenhum aluno encontrado com este filtro."
+                                columns={[
+                                    {
+                                        header: "Aluno",
+                                        render: (a) => (
+                                            <div>
+                                                <div className="font-medium text-gray-900 dark:text-white">{a.nome}</div>
+                                                <div className="text-xs text-gray-500">{a.matricula}</div>
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        header: "Curso",
+                                        render: (a) => (
+                                            <span className="text-sm">{a.curso}</span>
+                                        )
+                                    },
+                                    {
+                                        header: "Score",
+                                        className: "text-center",
+                                        render: (a) => (
+                                            <span className={cn(
+                                                "px-2 py-1 rounded-full text-xs font-bold",
+                                                a.score_risco >= 85 ? "bg-red-100 text-red-800" :
+                                                a.score_risco >= 60 ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800"
+                                            )}>
+                                                {a.score_risco}%
+                                            </span>
+                                        )
+                                    },
+                                    {
+                                        header: "Fatores",
+                                        render: (a) => (
+                                            <span className="text-xs text-gray-500 line-clamp-2">{a.fatores || '-'}</span>
+                                        )
+                                    }
+                                ]}
+                            />
+                        </div>
+                    )}
+
+                    {/* ABA MAPA DE CALOR */}
+                    {abaAtiva === 'mapa' && (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800">
+                                <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                    <Map className="w-5 h-5 text-blue-600" />
+                                    Risco Médio por Zona Residencial
+                                </h3>
+                                <button onClick={exportarMapaExcel} className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700">
+                                    <FileSpreadsheet className="w-4 h-4" /> Exportar Excel
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Gráfico */}
+                                <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl border border-gray-200 dark:border-slate-800">
+                                    <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300 mb-2 md:mb-4">Média de Risco (%)</h4>
+                                    <div className="h-48 md:h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={mapaCalor}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                                                <XAxis dataKey="zona" stroke="#9CA3AF" />
+                                                <YAxis stroke="#9CA3AF" />
+                                                <Tooltip />
+                                                <Bar dataKey="media_risco" radius={[4, 4, 0, 0]}>
+                                                    {mapaCalor.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={CORES_ZONA[entry.zona] || '#6B7280'} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                {/* Tabela Resumo */}
+                                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-200 dark:border-slate-800">
+                                    <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300 mb-4">Resumo por Zona</h4>
+                                    <div className="space-y-3">
+                                        {mapaCalor.map((m, i) => (
+                                            <div key={i} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: CORES_ZONA[m.zona] || '#6B7280' }}></div>
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-slate-300">{m.zona}</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-xs font-bold text-gray-900 dark:text-white">{m.media_risco}% Risco</div>
+                                                    <div className="text-[10px] text-gray-500">{m.total_alunos} alunos</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {mapaCalor.length === 0 && <p className="text-xs text-gray-500 text-center">Sem dados de localização.</p>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ABA EFICÁCIA */}
+                    {abaAtiva === 'eficacia' && (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-slate-800">
+                                <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-green-600" />
+                                    Análise de Intervenções Realizadas
+                                </h3>
+                            </div>
+
+                            <ResponsiveTable
+                                data={eficacia}
+                                keyExtractor={(e, i) => e.id_intervencao.toString()}
+                                emptyMessage="Nenhuma intervenção registrada."
+                                columns={[
+                                    {
+                                        header: "Aluno",
+                                        render: (e) => (
+                                            <div>
+                                                <div className="font-medium text-gray-900 dark:text-white">{e.aluno}</div>
+                                                <div className="text-xs text-gray-500">{e.matricula}</div>
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        header: "Tipo",
+                                        render: (e) => <span className="text-sm">{e.tipo_intervencao}</span>
+                                    },
+                                    {
+                                        header: "Status",
+                                        render: (e) => (
+                                            <span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                                {e.status}
+                                            </span>
+                                        )
+                                    },
+                                    {
+                                        header: "Risco Atual",
+                                        className: "text-center",
+                                        render: (e) => (
+                                            e.risco_atual !== null ? (
+                                                <span className={cn(
+                                                    "text-xs font-bold",
+                                                    e.risco_atual >= 80 ? "text-red-600" :
+                                                    e.risco_atual >= 50 ? "text-orange-600" : "text-green-600"
+                                                )}>
+                                                    {e.risco_atual}%
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">N/A</span>
+                                            )
+                                        )
+                                    }
+                                ]}
+                            />
+                        </div>
+                    )}
+                </motion.div>
+            )}
         </div>
-        {trend && (
-          <div className="flex items-center gap-1 text-sm text-green-600">
-            <TrendingUp className="w-4 h-4" />
-            <span className="font-medium">{trend}</span>
-          </div>
-        )}
-      </div>
-      <div>
-        <p className="text-sm font-medium text-gray-600 dark:text-slate-300">{title}</p>
-        <p className="text-3xl font-bold text-gray-800 dark:text-white mt-1">{value}</p>
-      </div>
-    </div>
-  );
+    );
 }

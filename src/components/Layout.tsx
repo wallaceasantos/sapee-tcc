@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, User, FileUp, BarChart3, GraduationCap, Menu, X, LogOut, Bell, Moon, Sun, Search, ChevronRight, ChevronLeft, AlertCircle, History, UserCircle, Shield, Calendar, TrendingUp, Heart, Target, AlertTriangle, FileText, ClipboardList, PieChart, Key, LogOut as LogOutIcon, Eye } from 'lucide-react';
+import { LayoutDashboard, Users, User, FileUp, BarChart3, GraduationCap, Menu, X, LogOut, Bell, Moon, Sun, Search, ChevronRight, ChevronLeft, AlertCircle, History, UserCircle, Shield, Calendar, TrendingUp, Heart, Target, AlertTriangle, FileText, ClipboardList, PieChart, Key, LogOut as LogOutIcon, Eye, BookOpen, BookMarked, Activity, MessageCircle, MessageSquare, Settings } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import HelpDrawer from './HelpDrawer';
 import OnboardingTour from './OnboardingTour';
@@ -15,6 +15,8 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/alunos', label: 'Alunos', icon: Users },
   { path: '/cadastro', label: 'Cadastro', icon: User },
+  { path: '/disciplinas', label: 'Disciplinas', icon: BookOpen },
+  { path: '/notas', label: 'Notas', icon: BookMarked },
   { path: '/faltas', label: 'Lançar Faltas', icon: AlertTriangle },
   { path: '/faltas/alertas', label: 'Alertas de Faltas', icon: AlertCircle },
   { path: '/intervencoes', label: 'Intervenções', icon: GraduationCap },
@@ -26,6 +28,11 @@ const navItems = [
   { path: '/egressos', label: 'Egressos', icon: LogOutIcon },
   { path: '/questionario-dashboard', label: 'Dashboard Questionário', icon: PieChart },
   { path: '/relatorios', label: '📊 Central de Relatórios', icon: BarChart3 },
+  { path: '/indicadores-eficacia', label: '🎯 Indicadores de Eficácia', icon: Target },
+  { path: '/validacao-modelo', label: '🤖 Validação do Modelo', icon: Activity },
+  { path: '/atendimentos', label: '💬 Atendimentos', icon: MessageCircle },
+  { path: '/comunicacoes', label: '📨 Comunicações', icon: MessageSquare },
+  { path: '/configuracoes', label: '⚙️ Configurações', icon: Settings },
   { path: '/importar', label: 'Importar Dados', icon: FileUp },
   { path: '/logs', label: 'Logs do Sistema', icon: History, requiresPermission: 'logs' },
   { path: '/usuarios', label: 'Usuários', icon: UserCircle, requiresPermission: 'usuarios' },

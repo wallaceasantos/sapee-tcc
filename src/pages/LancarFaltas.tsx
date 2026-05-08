@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Calendar, CheckCircle, XCircle, AlertTriangle, Save, Search, X, Users, ListChecks, FileText } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertTriangle, Save, Search, X, Users, ListChecks, FileText, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
 import { useToast } from '../components/ui/Toast';
@@ -28,6 +28,17 @@ interface Aluno {
   curso?: {
     nome: string;
   };
+  turno?: string;
+  predicao?: {
+    nivel_risco?: string;
+    score_risco?: number;
+  };
+}
+
+interface Disciplina {
+  id: number;
+  nome: string;
+  ativa: boolean;
 }
 
 interface AlunoPresenca {
@@ -35,6 +46,15 @@ interface AlunoPresenca {
   presente: boolean;
   justificada?: boolean;
   motivo?: string;
+}
+
+interface HistoricoFaltasAluno {
+  matricula: string;
+  nome: string;
+  totalFaltas: number;
+  faltasDisciplina: Record<string, number>;
+  ultimasFaltas: string[];
+  nivelAlerta: 'BAIXO' | 'MEDIO' | 'ALTO' | 'CRITICO';
 }
 
 type ModoLancamento = 'individual' | 'lote';
@@ -50,8 +70,10 @@ export default function LancarFaltas() {
 
   // Estados gerais
   const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
   const [modoLancamento, setModoLancamento] = useState<ModoLancamento>('individual');
   const [isLoadingAlunos, setIsLoadingAlunos] = useState(false);
+  const [isLoadingDisciplinas, setIsLoadingDisciplinas] = useState(false);
 
   // Estados para modo individual
   const [alunosFiltrados, setAlunosFiltrados] = useState<Aluno[]>([]);
@@ -62,22 +84,47 @@ export default function LancarFaltas() {
 
   // Estados para modo lote
   const [cursoSelecionado, setCursoSelecionado] = useState<string>('');
+  const [turnoSelecionado, setTurnoSelecionado] = useState<string>('');
   const [listaPresenca, setListaPresenca] = useState<AlunoPresenca[]>([]);
+  const [historicoFaltas, setHistoricoFaltas] = useState<HistoricoFaltasAluno[]>([]);
+  const [isLoadingHistorico, setIsLoadingHistorico] = useState(false);
 
   // Estados comuns
-  const [disciplina, setDisciplina] = useState('');
+  const [disciplinaId, setDisciplinaId] = useState<number | ''>('');
   const [data, setData] = useState(new Date().toISOString().split('T')[0]);
   const [justificada, setJustificada] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Constantes
+  const TURNOS = ['MATUTINO', 'VESPERTINO', 'NOTURNO'];
+
   // ============================================
-  // CARREGAR ALUNOS
+  // CARREGAR ALUNOS E DISCIPLINAS
   // ============================================
 
   useEffect(() => {
     loadAlunos();
+    loadDisciplinas();
   }, []);
+
+  const loadDisciplinas = async () => {
+    if (!token) return;
+
+    setIsLoadingDisciplinas(true);
+    try {
+      const data = await api.disciplinas.list(token, true);
+      setDisciplinas(data);
+    } catch (error: any) {
+      addToast({
+        type: 'error',
+        title: 'Erro ao carregar',
+        message: 'Não foi possível carregar as disciplinas'
+      });
+    } finally {
+      setIsLoadingDisciplinas(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -140,11 +187,21 @@ export default function LancarFaltas() {
   const handleSubmitIndividual = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!alunoSelecionado || !disciplina || !data) {
+    if (!alunoSelecionado || !disciplinaId || !data) {
       addToast({
         type: 'error',
         title: 'Campos obrigatórios',
         message: 'Preencha todos os campos obrigatórios'
+      });
+      return;
+    }
+
+    const disciplinaSelecionada = disciplinas.find(d => d.id === disciplinaId);
+    if (!disciplinaSelecionada) {
+      addToast({
+        type: 'error',
+        title: 'Disciplina inválida',
+        message: 'Selecione uma disciplina válida'
       });
       return;
     }
@@ -161,7 +218,8 @@ export default function LancarFaltas() {
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
-            disciplina,
+            disciplina: disciplinaSelecionada.nome,
+            disciplina_id: disciplinaId,
             data,
             justificada,
             motivo_justificativa: justificada ? motivo : null,
@@ -172,7 +230,7 @@ export default function LancarFaltas() {
       addToast({
         type: 'success',
         title: 'Falta registrada',
-        message: `Falta de ${alunoSelecionado.nome} registrada com sucesso`
+        message: `Falta de ${alunoSelecionado.nome} em ${disciplinaSelecionada.nome} registrada com sucesso`
       });
 
       // Verificar alertas de faltas consecutivas
@@ -183,6 +241,7 @@ export default function LancarFaltas() {
       setMotivo('');
       setAlunoSelecionado(null);
       setBusca('');
+      setDisciplinaId('');
 
     } catch (error: any) {
       addToast({
@@ -209,8 +268,9 @@ export default function LancarFaltas() {
       return;
     }
 
-    const alunosCurso = alunos.filter(a => 
-      a.curso?.nome === cursoSelecionado
+    const alunosCurso = alunos.filter(a =>
+      a.curso?.nome === cursoSelecionado &&
+      (!turnoSelecionado || a.turno === turnoSelecionado)
     );
 
     if (alunosCurso.length === 0) {
@@ -235,14 +295,99 @@ export default function LancarFaltas() {
       title: 'Lista gerada',
       message: `${alunosCurso.length} alunos na lista de presença`
     });
+
+    // Carregar histórico de faltas dos alunos
+    carregarHistoricoFaltas(alunosCurso);
+  };
+
+  const carregarHistoricoFaltas = async (alunosCurso: Aluno[]) => {
+    if (!token) return;
+
+    setIsLoadingHistorico(true);
+    try {
+      const historico: HistoricoFaltasAluno[] = [];
+
+      for (const aluno of alunosCurso) {
+        try {
+          // Buscar faltas por disciplina
+          const responseDisciplina = await fetch(
+            `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/alunos/${aluno.matricula}/faltas-por-disciplina`,
+            {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }
+          );
+
+          let faltasDisciplina: Record<string, number> = {};
+          let totalFaltas = 0;
+
+          if (responseDisciplina.ok) {
+            const dados = await responseDisciplina.json();
+            dados.forEach((item: any) => {
+              faltasDisciplina[item.disciplina] = item.total_faltas;
+              totalFaltas += item.total_faltas;
+            });
+          }
+
+          // Buscar últimas faltas
+          const responseFaltas = await fetch(
+            `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/alunos/${aluno.matricula}/faltas?limit=5`,
+            {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }
+          );
+
+          let ultimasFaltas: string[] = [];
+
+          if (responseFaltas.ok) {
+            const faltas = await responseFaltas.json();
+            ultimasFaltas = faltas
+              .sort((a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime())
+              .slice(0, 5)
+              .map((f: any) => f.data);
+          }
+
+          // Calcular nível de alerta
+          let nivelAlerta: HistoricoFaltasAluno['nivelAlerta'] = 'BAIXO';
+          if (totalFaltas >= 10) nivelAlerta = 'CRITICO';
+          else if (totalFaltas >= 5) nivelAlerta = 'ALTO';
+          else if (totalFaltas >= 3) nivelAlerta = 'MEDIO';
+
+          historico.push({
+            matricula: aluno.matricula,
+            nome: aluno.nome,
+            totalFaltas,
+            faltasDisciplina,
+            ultimasFaltas,
+            nivelAlerta
+          });
+        } catch (error) {
+          console.error(`Erro ao carregar histórico de ${aluno.nome}:`, error);
+        }
+      }
+
+      // Ordenar por total de faltas (mais faltosos primeiro)
+      historico.sort((a, b) => b.totalFaltas - a.totalFaltas);
+      setHistoricoFaltas(historico);
+    } catch (error) {
+      console.error('Erro ao carregar histórico de faltas:', error);
+    } finally {
+      setIsLoadingHistorico(false);
+    }
   };
 
   const togglePresenca = (matricula: string) => {
-    setListaPresenca(prev => prev.map(item =>
-      item.aluno.matricula === matricula
-        ? { ...item, presente: !item.presente, justificada: false, motivo: '' }
-        : item
-    ));
+    setListaPresenca(prev => prev.map(item => {
+      if (item.aluno.matricula !== matricula) return item;
+      
+      // Ciclo: Presente → Falta → Justificada → Presente
+      if (item.presente) {
+        return { ...item, presente: false, justificada: false, motivo: '' };
+      } else if (!item.justificada) {
+        return { ...item, presente: false, justificada: true, motivo: '' };
+      } else {
+        return { ...item, presente: true, justificada: false, motivo: '' };
+      }
+    }));
   };
 
   const toggleJustificativa = (matricula: string) => {
@@ -265,11 +410,21 @@ export default function LancarFaltas() {
       return;
     }
 
-    if (!disciplina || !data) {
+    if (!disciplinaId || !data) {
       addToast({
         type: 'error',
         title: 'Campos obrigatórios',
-        message: 'Preencha a disciplina e data'
+        message: 'Selecione a disciplina e a data'
+      });
+      return;
+    }
+
+    const disciplinaSelecionada = disciplinas.find(d => d.id === disciplinaId);
+    if (!disciplinaSelecionada) {
+      addToast({
+        type: 'error',
+        title: 'Disciplina inválida',
+        message: 'Selecione uma disciplina válida'
       });
       return;
     }
@@ -291,7 +446,8 @@ export default function LancarFaltas() {
                 'Authorization': `Bearer ${token}`,
               },
               body: JSON.stringify({
-                disciplina,
+                disciplina: disciplinaSelecionada.nome,
+                disciplina_id: disciplinaId,
                 data,
                 justificada: item.justificada || false,
                 motivo_justificativa: item.justificada ? item.motivo : null,
@@ -312,11 +468,13 @@ export default function LancarFaltas() {
       addToast({
         type: erros > 0 ? 'warning' : 'success',
         title: `${sucessos} falta(s) registrada(s)`,
-        message: erros > 0 ? `${erros} erro(s) ao registrar` : 'Todas as faltas registradas com sucesso'
+        message: erros > 0 ? `${erros} erro(s) ao registrar` : `Todas as faltas em ${disciplinaSelecionada.nome} registradas com sucesso`
       });
 
       setListaPresenca([]);
       setCursoSelecionado('');
+      setDisciplinaId('');
+      setHistoricoFaltas([]);
 
     } catch (error: any) {
       addToast({
@@ -522,14 +680,34 @@ export default function LancarFaltas() {
                     <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                       Disciplina *
                     </label>
-                    <input
-                      type="text"
-                      value={disciplina}
-                      onChange={(e) => setDisciplina(e.target.value)}
-                      placeholder="Ex: Matemática"
+                    <select
+                      value={disciplinaId}
+                      onChange={(e) => setDisciplinaId(e.target.value ? Number(e.target.value) : '')}
                       required
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500"
-                    />
+                      disabled={isLoadingDisciplinas}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white min-h-[50px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {isLoadingDisciplinas ? 'Carregando disciplinas...' : 'Selecione a disciplina'}
+                      </option>
+                      {disciplinas.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.nome}
+                        </option>
+                      ))}
+                    </select>
+                    {disciplinas.length === 0 && !isLoadingDisciplinas && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                        Nenhuma disciplina cadastrada. {' '}
+                        <button
+                          type="button"
+                          onClick={() => navigate('/disciplinas')}
+                          className="underline hover:text-amber-700 dark:hover:text-amber-300"
+                        >
+                          Cadastrar disciplinas
+                        </button>
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -584,7 +762,7 @@ export default function LancarFaltas() {
                   <button
                     type="button"
                     onClick={() => {
-                      setDisciplina('');
+                      setDisciplinaId('');
                       setJustificada(false);
                       setMotivo('');
                       setAlunoSelecionado(null);
@@ -656,18 +834,21 @@ export default function LancarFaltas() {
       {/* MODO LOTE (Lista de Presença) */}
       {/* ============================================ */}
       {modoLancamento === 'lote' && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6"
-        >
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6">
+          {/* Coluna Principal - Lista de Presença */}
+          <div className="xl:col-span-2">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6"
+            >
           <h2 className="text-base md:text-xl font-bold text-gray-800 dark:text-white mb-4 md:mb-6 flex items-center gap-2">
             <Users className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
             Lista de Presença da Turma
           </h2>
 
           {/* Configurações */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div>
               <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                 Curso *
@@ -686,15 +867,51 @@ export default function LancarFaltas() {
 
             <div>
               <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Turno
+              </label>
+              <select
+                value={turnoSelecionado}
+                onChange={(e) => setTurnoSelecionado(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white min-h-11"
+              >
+                <option value="">Todos os turnos</option>
+                {TURNOS.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                 Disciplina *
               </label>
-              <input
-                type="text"
-                value={disciplina}
-                onChange={(e) => setDisciplina(e.target.value)}
-                placeholder="Ex: Matemática"
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white min-h-11"
-              />
+              <select
+                value={disciplinaId}
+                onChange={(e) => setDisciplinaId(e.target.value ? Number(e.target.value) : '')}
+                disabled={isLoadingDisciplinas}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white min-h-11 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {isLoadingDisciplinas ? 'Carregando...' : 'Selecione a disciplina'}
+                </option>
+                {disciplinas.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nome}
+                  </option>
+                ))}
+              </select>
+              {disciplinas.length === 0 && !isLoadingDisciplinas && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  Nenhuma disciplina cadastrada. {' '}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/disciplinas')}
+                    className="underline hover:text-amber-700 dark:hover:text-amber-300"
+                  >
+                    Cadastrar
+                  </button>
+                </p>
+              )}
             </div>
 
             <div>
@@ -727,8 +944,8 @@ export default function LancarFaltas() {
           {listaPresenca.length > 0 && (
             <div className="space-y-4">
               {/* Resumo */}
-              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-xl">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-slate-800 rounded-xl">
+                <div className="flex flex-wrap items-center gap-2 md:gap-4">
                   <span className="text-sm font-bold text-gray-700 dark:text-slate-300">
                     {listaPresenca.length} alunos
                   </span>
@@ -736,11 +953,17 @@ export default function LancarFaltas() {
                     ✓ {listaPresenca.filter(i => i.presente).length} presentes
                   </span>
                   <span className="text-sm text-red-600 dark:text-red-400">
-                    ✗ {listaPresenca.filter(i => !i.presente).length} ausentes
+                    ✗ {listaPresenca.filter(i => !i.presente && !i.justificada).length} faltas
+                  </span>
+                  <span className="text-sm text-amber-600 dark:text-amber-400">
+                    ⚠ {listaPresenca.filter(i => i.justificada).length} justificadas
                   </span>
                 </div>
                 <button
-                  onClick={() => setListaPresenca([])}
+                  onClick={() => {
+                    setListaPresenca([]);
+                    setHistoricoFaltas([]);
+                  }}
                   className="text-sm text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 font-bold"
                 >
                   Limpar lista
@@ -754,19 +977,28 @@ export default function LancarFaltas() {
                     <thead className="bg-gray-50 dark:bg-slate-800 sticky top-0">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Aluno</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-24">Presença</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-24">Justificada</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-500 dark:text-slate-400 uppercase w-28">Situação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                      {listaPresenca.map((item) => (
+                      {listaPresenca.map((item) => {
+                        const isRisco = item.aluno.predicao?.nivel_risco === 'ALTO' || item.aluno.predicao?.nivel_risco === 'MUITO_ALTO';
+                        return (
                         <tr key={item.aluno.matricula} className={cn(
                           "transition-colors",
                           item.presente ? "bg-white dark:bg-slate-900" : "bg-red-50 dark:bg-red-900/10"
                         )}>
                           <td className="px-4 py-3">
                             <div>
-                              <p className="font-semibold text-sm text-gray-900 dark:text-white">{item.aluno.nome}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-sm text-gray-900 dark:text-white">{item.aluno.nome}</p>
+                                {isRisco && (
+                                  <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded text-[10px] font-bold uppercase tracking-wide" title={`Risco: ${item.aluno.predicao?.nivel_risco}`}>
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Risco
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-gray-500 dark:text-slate-400">{item.aluno.matricula}</p>
                             </div>
                           </td>
@@ -777,29 +1009,18 @@ export default function LancarFaltas() {
                                 "w-10 h-10 rounded-full flex items-center justify-center transition-all",
                                 item.presente
                                   ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
+                                  : item.justificada
+                                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50"
                                   : "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50"
                               )}
+                              title={item.presente ? 'Presente' : item.justificada ? 'Justificada' : 'Falta'}
                             >
-                              {item.presente ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                              {item.presente ? <CheckCircle className="w-5 h-5" /> : item.justificada ? <AlertTriangle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                             </button>
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            {!item.presente && (
-                              <button
-                                onClick={() => toggleJustificativa(item.aluno.matricula)}
-                                className={cn(
-                                  "px-3 py-1.5 rounded-full text-xs font-bold transition-all",
-                                  item.justificada
-                                    ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                                    : "bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
-                                )}
-                              >
-                                {item.justificada ? 'Sim' : 'Não'}
-                              </button>
-                            )}
-                          </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -819,7 +1040,138 @@ export default function LancarFaltas() {
               </button>
             </div>
           )}
-        </motion.div>
+            </motion.div>
+          </div>
+
+          {/* Coluna Lateral - Histórico de Faltas */}
+          <div className="xl:col-span-1">
+            <AnimatePresence>
+              {listaPresenca.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6 sticky top-24"
+                >
+                  <h3 className="text-base md:text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-purple-600" />
+                    Histórico de Faltas
+                  </h3>
+
+                  {isLoadingHistorico ? (
+                    <div className="flex flex-col items-center justify-center py-8 space-y-3">
+                      <div className="w-8 h-8 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+                      <p className="text-sm text-gray-500 dark:text-slate-400">Carregando histórico...</p>
+                    </div>
+                  ) : historicoFaltas.length > 0 ? (
+                    <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+                      {historicoFaltas.map((aluno) => {
+                        const maxFaltas = 15;
+                        const barraWidth = Math.min((aluno.totalFaltas / maxFaltas) * 100, 100);
+                        
+                        const cores = {
+                          BAIXO: 'bg-green-500',
+                          MEDIO: 'bg-yellow-500',
+                          ALTO: 'bg-orange-500',
+                          CRITICO: 'bg-red-500'
+                        };
+
+                        const icones = {
+                          BAIXO: '',
+                          MEDIO: '',
+                          ALTO: '⚠️',
+                          CRITICO: '🔴'
+                        };
+
+                        return (
+                          <div
+                            key={aluno.matricula}
+                            className="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700"
+                          >
+                            {/* Nome e Matrícula */}
+                            <div className="mb-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white truncate flex-1">
+                                  {aluno.nome}
+                                </p>
+                                <span className="text-lg">{icones[aluno.nivelAlerta]}</span>
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-slate-400">{aluno.matricula}</p>
+                            </div>
+
+                            {/* Barra de Progresso */}
+                            <div className="mb-2">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold text-gray-600 dark:text-slate-300">
+                                  {aluno.totalFaltas} falta{aluno.totalFaltas !== 1 ? 's' : ''}
+                                </span>
+                                <span className="text-xs text-gray-400 dark:text-slate-500">
+                                  / {maxFaltas}
+                                </span>
+                              </div>
+                              <div className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                  className={cn("h-full rounded-full transition-all duration-500", cores[aluno.nivelAlerta])}
+                                  style={{ width: `${barraWidth}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Alertas */}
+                            {aluno.nivelAlerta === 'CRITICO' && (
+                              <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                <p className="text-xs font-bold text-red-700 dark:text-red-400">
+                                  🚨 Intervenção URGENTE necessária!
+                                </p>
+                              </div>
+                            )}
+
+                            {aluno.nivelAlerta === 'ALTO' && (
+                              <div className="mt-2 p-2 bg-orange-100 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                                <p className="text-xs font-bold text-orange-700 dark:text-orange-400">
+                                  ⚠️ Acionar psicossocial + família
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Últimas faltas */}
+                            {aluno.ultimasFaltas.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">Últimas faltas:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {aluno.ultimasFaltas.slice(0, 3).map((data, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="px-2 py-0.5 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded text-[10px] font-mono"
+                                    >
+                                      {new Date(data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    </span>
+                                  ))}
+                                  {aluno.ultimasFaltas.length > 3 && (
+                                    <span className="px-2 py-0.5 text-gray-500 dark:text-slate-400 text-[10px]">
+                                      +{aluno.ultimasFaltas.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <BarChart3 className="w-12 h-12 text-gray-300 dark:text-slate-600 mb-3" />
+                      <p className="text-sm text-gray-500 dark:text-slate-400">
+                        Gere a lista de presença para ver o histórico
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       )}
     </div>
   );

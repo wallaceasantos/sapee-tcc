@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, User, GraduationCap, Wallet, MapPin, AlertCircle, TrendingDown, Calendar, ClipboardList, CheckCircle2, Clock, AlertTriangle, Loader2, TrendingUp, TrendingDown as TrendingDownIcon, XCircle, CheckCircle, Users } from 'lucide-react';
+import { ChevronLeft, User, GraduationCap, Wallet, MapPin, AlertCircle, TrendingDown, Calendar, ClipboardList, CheckCircle2, Clock, AlertTriangle, Loader2, TrendingUp, TrendingDown as TrendingDownIcon, XCircle, CheckCircle, Users, BookOpen } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'motion/react';
 import { cn, getRiscoColor } from '../utils';
@@ -16,6 +16,7 @@ import { RiskBadge, RiskProgressBar } from '../components/ui';
 import { useToast } from '../components/ui/Toast';
 import { logAction } from '../services/logService';
 import api from '../services/api';
+import TimelineJornada from '../components/TimelineJornada';
 
 // Interface do Histórico de Frequência
 interface FrequenciaMensal {
@@ -75,6 +76,15 @@ interface Aluno {
   possui_internet?: boolean;
   beneficiario_bolsa_familia?: boolean;
   primeiro_geracao_universidade?: boolean;
+  questionario_respondido?: boolean;
+  data_ultimo_questionario?: string;
+  nome_responsavel_1?: string;
+  parentesco_responsavel_1?: string;
+  telefone_responsavel_1?: string;
+  email_responsavel_1?: string;
+  nome_responsavel_2?: string;
+  parentesco_responsavel_2?: string;
+  telefone_responsavel_2?: string;
   predicao_atual?: {
     id: number;
     risco_evasao: number;
@@ -107,6 +117,7 @@ export default function AlunoDetail() {
   const [aluno, setAluno] = useState<Aluno | null>(null);
   const [intervencoes, setIntervencoes] = useState<Intervencao[]>([]);
   const [historicoFrequencia, setHistoricoFrequencia] = useState<FrequenciaMensal[]>([]);
+  const [faltasPorDisciplina, setFaltasPorDisciplina] = useState<any[]>([]);
   const [tendencia, setTendencia] = useState<'subindo' | 'descendo' | 'estavel'>('estavel');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -177,7 +188,16 @@ export default function AlunoDetail() {
 
         // Carregar intervenções (mock por enquanto - implementar endpoint depois)
         setIntervencoes([]);
-        
+
+        // Carregar faltas por disciplina
+        try {
+          const faltasData = await api.faltas.porDisciplina(token, matricula);
+          setFaltasPorDisciplina(faltasData);
+        } catch (faltasError) {
+          console.error('Erro ao carregar faltas por disciplina:', faltasError);
+          setFaltasPorDisciplina([]);
+        }
+
       } catch (err) {
         console.error('Erro ao carregar aluno:', err);
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
@@ -565,6 +585,64 @@ export default function AlunoDetail() {
               </div>
             )}
           </InfoCard>
+
+          {/* Faltas por Disciplina */}
+          <InfoCard title="📚 Faltas por Disciplina" icon={BookOpen}>
+            {faltasPorDisciplina.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 dark:text-slate-400">
+                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Nenhuma falta registrada por disciplina.</p>
+                <p className="text-sm mt-1">As faltas aparecerão aqui conforme forem registradas.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {faltasPorDisciplina.map((faltas, idx) => {
+                  const isCritical = faltas.faltas_nao_justificadas >= 5;
+                  const isWarning = faltas.faltas_nao_justificadas >= 3;
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      className={cn(
+                        "p-4 rounded-xl border transition-colors",
+                        isCritical 
+                          ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                          : isWarning
+                            ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                            : "bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 dark:text-white">{faltas.disciplina}</span>
+                          {isCritical && <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-full text-xs font-bold">⚠️ Crítico</span>}
+                          {isWarning && !isCritical && <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-full text-xs font-bold">⚡ Atenção</span>}
+                        </div>
+                        <span className={cn(
+                          "text-xl font-black",
+                          isCritical ? "text-red-600 dark:text-red-400" : isWarning ? "text-amber-600 dark:text-amber-400" : "text-gray-700 dark:text-slate-300"
+                        )}>
+                          {faltas.total_faltas}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-green-600 dark:text-green-400">✓ {faltas.faltas_justificadas} justificadas</span>
+                        <span className={cn("font-bold", faltas.faltas_nao_justificadas >= 3 ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-slate-400")}>
+                          ✗ {faltas.faltas_nao_justificadas} não justificadas
+                        </span>
+                        {faltas.ultima_falta && (
+                          <span className="text-gray-500 dark:text-slate-500 ml-auto">
+                            Última: {new Date(faltas.ultima_falta).toLocaleDateString('pt-BR')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </InfoCard>
         </div>
 
         {/* Coluna Direita: Predição */}
@@ -633,6 +711,20 @@ export default function AlunoDetail() {
             )}
           </motion.div>
         </div>
+
+        {/* Jornada do Aluno - Timeline Unificada */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-6 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Jornada do Aluno</h3>
+          </div>
+          <TimelineJornada matricula={matricula || ''} />
+        </motion.div>
       </div>
     </div>
   );

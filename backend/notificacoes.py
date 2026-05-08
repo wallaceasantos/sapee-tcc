@@ -153,7 +153,27 @@ class TelegramNotifier:
         """.strip()
         
         return self.enviar_mensagem(mensagem)
-    
+
+    def gerar_mensagem_faltas_seguidas(self, aluno: dict, faltas: int) -> str:
+        """
+        Retorna a mensagem de alerta de faltas sem enviar (para uso no log).
+        """
+        return f"""⚠️ <b>ALERTA DE FALTAS - MÉDIO</b>
+
+<b>Aluno:</b> {aluno.get('nome', 'N/A')}
+<b>Matrícula:</b> {aluno.get('matricula', 'N/A')}
+<b>Curso:</b> {aluno.get('curso', 'N/A')}
+
+<b>Faltas Consecutivas:</b> {faltas}
+
+<b>Ação Sugerida:</b>
+• Entrar em contato com o aluno
+• Verificar justificativas
+• Monitorar frequência nas próximas semanas
+
+<b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}
+        """.strip()
+
     def enviar_alerta_risco_evasao(self, aluno: dict, risco: float, nivel: str) -> bool:
         """
         Envia alerta de risco de evasão

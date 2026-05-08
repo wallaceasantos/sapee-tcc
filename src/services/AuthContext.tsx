@@ -3,7 +3,7 @@ import { logAction } from './logService';
 import { api } from './api';
 
 // Tipos de Roles
-export type Role = 'ADMIN' | 'COORDENADOR' | 'PEDAGOGO' | 'DIRETOR';
+export type Role = 'ADMIN' | 'COORDENADOR' | 'PEDAGOGO' | 'DIRETOR' | 'PROFESSOR';
 
 // Interface de Curso (resposta da API)
 interface CursoResponse {
@@ -261,6 +261,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true;
       case 'DIRETOR':
         if (recurso === 'usuarios' || recurso === 'configuracoes') return false;
+        return true;
+      case 'PROFESSOR':
+        // Professor pode: lançar faltas, ver alunos (read), ver suas disciplinas, lançar notas
+        if (recurso === 'usuarios' || recurso === 'importar' || recurso === 'logs' || recurso === 'configuracoes') return false;
+        if (recurso === 'alunos' && acao && acao !== 'read') return false;
         return true;
       default:
         return false;

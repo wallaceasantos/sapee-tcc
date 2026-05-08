@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
 import api from '../services/api';
 import { NivelRisco } from '../types';
+import { limparTelefone } from '../utils/telefone';
 
 // Interface do formulário (27+ campos)
 export interface AlunoFormData {
@@ -574,10 +575,25 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       console.log('🔵 Tentando salvar aluno na URL:', API_URL);
       
-      // Preparar dados para envio
+      // Preparar dados para envio (limpar telefones e converter strings vazias para null)
+      const cleanValue = (val: any) => {
+        if (val === '' || val === undefined) return null;
+        return val;
+      };
+
       const dadosParaEnvio = {
         ...formData,
-        // tipo_auxilio deve ser JSON array, não string vazia
+        matricula: formData.matricula,
+        nome: formData.nome,
+        email: cleanValue(formData.email),
+        telefone: limparTelefone(formData.telefone),
+        data_nascimento: cleanValue(formData.data_nascimento) || '2000-01-01',
+        telefone_responsavel_1: limparTelefone(formData.telefone_responsavel_1),
+        email_responsavel_1: cleanValue(formData.email_responsavel_1),
+        nome_responsavel_2: cleanValue(formData.nome_responsavel_2),
+        parentesco_responsavel_2: cleanValue(formData.parentesco_responsavel_2),
+        telefone_responsavel_2: limparTelefone(formData.telefone_responsavel_2),
+        complemento: cleanValue(formData.complemento),
         tipo_auxilio: formData.tipo_auxilio || '[]',
       };
       

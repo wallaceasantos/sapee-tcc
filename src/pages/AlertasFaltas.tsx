@@ -628,38 +628,49 @@ export default function AlertasFaltas() {
   };
 
   // ============================================
-  // ENVIAR TELEGRAM
+  // ENVIAR TELEGRAM (USANDO SERVIÇO UNIFICADO)
   // ============================================
 
   const handleEnviarTelegram = async (alertaId: number) => {
     if (!token) return;
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/notificacoes-faltas/alerta-faltas/${alertaId}`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        addToast({
-          type: 'success',
-          title: '✅ Alerta enviado!',
-          message: data.message
-        });
-      } else {
-        addToast({
-          type: 'error',
-          title: 'Erro ao enviar',
-          message: data.detail || 'Erro ao enviar alerta via Telegram'
-        });
+      const alerta = alertas.find(a => a.id === alertaId);
+      if (!alerta) {
+        addToast({ type: 'error', title: 'Erro', message: 'Alerta não encontrado' });
+        return;
       }
+
+      // Buscar dados do aluno para contexto
+      const alunoResponse = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/alunos/${alerta.aluno_matricula}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      const aluno = await alunoResponse.json();
+
+      // Disparar via serviço unificado de comunicações
+      await api.comunicacoes.disparar(token, {
+        aluno_matricula: alerta.aluno_matricula,
+        template_id: 'ALERTA_FALTAS',
+        contexto: {
+          nome_aluno: aluno.nome || alerta.aluno_matricula,
+          nome_responsavel: aluno.nome_responsavel_1 || 'Responsável',
+          qtd_faltas: alerta.quantidade_faltas,
+          data_inicio: alerta.data_inicio_faltas ? new Date(alerta.data_inicio_faltas).toLocaleDateString('pt-BR') : 'N/A',
+          data_fim: alerta.data_fim_faltas ? new Date(alerta.data_fim_faltas).toLocaleDateString('pt-BR') : 'N/A',
+        },
+        canal: 'TELEGRAM',
+        destinatario_tipo: 'RESPONSAVEL',
+        destinatario_nome: aluno.nome_responsavel_1 || 'Coordenação',
+        modulo_origem: 'ALERTA_FALTAS',
+      });
+
+      addToast({
+        type: 'success',
+        title: '✅ Alerta enviado!',
+        message: `Alerta de ${alerta.quantidade_faltas} faltas registrado e enviado via Telegram`
+      });
+      loadAlertas();
     } catch (error: any) {
       addToast({
         type: 'error',
@@ -1174,6 +1185,49 @@ export default function AlertasFaltas() {
                                   `Pedimos que entre em contato com a escola para conversarmos sobre a situação do(a) aluno(a).\n\n` +
                                   `Atenciosamente,\nEquipe SAPEE`
                                 )}`}
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  try {
+                                    if (!alerta || !token) return;
+
+                                    // Buscar dados do aluno
+                                    const alunoResponse = await fetch(
+                                      `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/alunos/${alerta.aluno_matricula}`,
+                                      { headers: { 'Authorization': `Bearer ${token}` } }
+                                    );
+                                    const aluno = await alunoResponse.json();
+                                    
+                                    // Disparar via serviço unificado
+                                    const comunicacao = await api.comunicacoes.disparar(token, {
+                                      aluno_matricula: alerta.aluno_matricula,
+                                      template_id: 'ALERTA_FALTAS',
+                                      contexto: {
+                                        nome_aluno: aluno.nome || alerta.aluno_matricula,
+                                        nome_responsavel: aluno.nome_responsavel_1 || 'Responsável',
+                                        qtd_faltas: alerta.quantidade_faltas,
+                                        data_inicio: alerta.data_inicio_faltas ? new Date(alerta.data_inicio_faltas).toLocaleDateString('pt-BR') : 'N/A',
+                                        data_fim: alerta.data_fim_faltas ? new Date(alerta.data_fim_faltas).toLocaleDateString('pt-BR') : 'N/A',
+                                      },
+                                      canal: 'WHATSAPP',
+                                      destinatario_tipo: 'RESPONSAVEL',
+                                      destinatario_nome: aluno.nome_responsavel_1 || 'Responsável',
+                                      destinatario_contato: aluno.telefone_responsavel_1 || '',
+                                      modulo_origem: 'ALERTA_FALTAS',
+                                    });
+                                    
+                                    // Montar link do WhatsApp com a mensagem gerada
+                                    const telefone = aluno.telefone_responsavel_1?.replace(/\D/g, '') || '';
+                                    const mensagemCodificada = encodeURIComponent(comunicacao.mensagem);
+                                    const whatsappUrl = `https://wa.me/55${telefone}?text=${mensagemCodificada}`;
+                                    
+                                    window.open(whatsappUrl, '_blank', 'noopener noreferrer');
+                                    addToast({ type: 'success', title: '✅ WhatsApp aberto', message: 'Mensagem gerada e registrada no histórico' });
+                                    loadAlertas();
+                                  } catch (err) {
+                                    console.error('Erro ao enviar WhatsApp:', err);
+                                    addToast({ type: 'error', title: 'Erro', message: 'Não foi possível gerar a mensagem' });
+                                  }
+                                }}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-2 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-1 text-xs font-bold"

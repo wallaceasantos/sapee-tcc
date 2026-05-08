@@ -422,18 +422,46 @@ export default function Intervencoes() {
                               )}
                             </div>
                             {(intervencao.aluno as any).telefone_responsavel_1 && (
-                              <a
-                                href={`https://wa.me/${(intervencao.aluno as any).telefone_responsavel_1.replace(/\D/g, '')}?text=${encodeURIComponent(
-                                  `Olá! Somos do SAPEE - Sistema de Alerta de Predição de Evasão Escolar. Gostaríamos de conversar sobre o(a) aluno(a) ${intervencao.aluno.nome}.`
-                                )}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const token = localStorage.getItem('sapee_token');
+                                    if (!token || !intervencao.aluno) return;
+                                    
+                                    // Disparar via serviço unificado
+                                    const comunicacao = await api.comunicacoes.disparar(token, {
+                                      aluno_matricula: (intervencao.aluno as any).matricula,
+                                      template_id: 'INTERVENCAO_INICIO',
+                                      contexto: {
+                                        nome_aluno: intervencao.aluno.nome,
+                                        nome_responsavel: (intervencao.aluno as any).nome_responsavel_1 || 'Responsável',
+                                        tipo_intervencao: intervencao.tipo,
+                                        data_intervencao: intervencao.data_intervencao ? new Date(intervencao.data_intervencao).toLocaleDateString('pt-BR') : 'N/A',
+                                      },
+                                      canal: 'WHATSAPP',
+                                      destinatario_tipo: 'RESPONSAVEL',
+                                      destinatario_nome: (intervencao.aluno as any).nome_responsavel_1 || 'Responsável',
+                                      destinatario_contato: (intervencao.aluno as any).telefone_responsavel_1 || '',
+                                      modulo_origem: 'INTERVENCAO',
+                                    });
+                                    
+                                    // Abrir WhatsApp com mensagem gerada
+                                    const telefone = (intervencao.aluno as any).telefone_responsavel_1.replace(/\D/g, '');
+                                    const mensagemCodificada = encodeURIComponent(comunicacao.mensagem);
+                                    window.open(`https://wa.me/55${telefone}?text=${mensagemCodificada}`, '_blank', 'noopener noreferrer');
+                                    
+                                    addToast({ type: 'success', title: '✅ WhatsApp aberto', message: 'Mensagem gerada e registrada no histórico' });
+                                  } catch (err) {
+                                    console.error('Erro ao enviar WhatsApp:', err);
+                                    addToast({ type: 'error', title: 'Erro', message: 'Não foi possível gerar a mensagem' });
+                                  }
+                                }}
                                 className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all text-xs font-bold shrink-0"
                                 title="Enviar WhatsApp"
                               >
                                 <MessageCircle className="w-4 h-4" />
                                 WhatsApp
-                              </a>
+                              </button>
                             )}
                           </div>
                         )}
