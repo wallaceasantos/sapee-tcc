@@ -1,0 +1,13 @@
+# Configuracao do SERVICO DE FRONTEND no Railway.
+# Forca o uso do Dockerfile (build multi-stage: Vite -> nginx), evitando o
+# builder Nixpacks, que tentava iniciar a aplicacao com `npx` (indisponivel
+# na imagem final do nginx).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Sem startCommand: o CMD da imagem (nginx) inicia o servidor, escutando em $PORT.
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
