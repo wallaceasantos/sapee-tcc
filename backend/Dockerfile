@@ -17,5 +17,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Garante o schema e inicia o servidor (alembic e opcional via RUN_MIGRATIONS)
-CMD ["sh", "-c", "python bootstrap.py && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Prepara o banco (bootstrap) e inicia o servidor lendo PORT via Python.
+# Nao usa `$PORT` no comando, evitando falha quando o shell nao expande a variavel.
+CMD ["python", "run.py"]
