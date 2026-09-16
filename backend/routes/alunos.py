@@ -16,9 +16,9 @@ from ml_logic_v2 import calcular_risco_evasao
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-# ============================================
+# ==========================================
 # ENDPOINTS - ALUNOS
-# ============================================
+# ==========================================
 
 
 @router.get("/alunos/buscar")
