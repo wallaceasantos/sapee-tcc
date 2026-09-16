@@ -3,7 +3,9 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
+# Sem startCommand: o CMD do Dockerfile roda `python bootstrap.py` (garante o
+# schema a partir dos modelos) e sobe o uvicorn. Evita o `alembic upgrade head`
+# em banco vazio, que falhava e derrubava o container.
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"

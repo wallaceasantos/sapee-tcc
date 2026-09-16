@@ -11,6 +11,9 @@ __pycache__/
 *.pyc
 .qwen/
 docs/
+# Artefatos de teste / relatorios gerados
+test_temp.db
+eslint_output.txt
 # Artefatos de teste/relatorios gerados
 test_temp.db
 eslint_output.txt
