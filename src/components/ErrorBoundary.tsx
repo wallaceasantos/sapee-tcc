@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, RefreshCw, Bug } from 'lucide-react';
+import { RefreshCw, Bug } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface Props {

@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp, FileText, Users, Award } from 'lucide-react';
+import { BarChart3, FileText, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
 import Relatorios from './Relatorios';

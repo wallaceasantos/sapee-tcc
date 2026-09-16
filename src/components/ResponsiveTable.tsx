@@ -9,27 +9,27 @@
 import React from 'react';
 import { cn } from '../utils';
 
-interface Column {
+interface Column<T> {
   header: string;
-  render: (item: any) => React.ReactNode;
+  render: (item: T) => React.ReactNode;
   className?: string;
 }
 
-interface ResponsiveTableProps {
-  data: any[];
-  columns: Column[];
-  keyExtractor: (item: any, index: number) => string;
+interface ResponsiveTableProps<T> {
+  data: T[];
+  columns: Column<T>[];
+  keyExtractor: (item: T, index: number) => string;
   emptyMessage?: string;
   className?: string;
 }
 
-export default function ResponsiveTable({
+export default function ResponsiveTable<T>({
   data,
   columns,
   keyExtractor,
   emptyMessage = "Nenhum dado disponível",
   className
-}: ResponsiveTableProps) {
+}: ResponsiveTableProps<T>) {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center p-8 text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800">

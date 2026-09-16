@@ -70,6 +70,24 @@ export const getAlunosSemResponder = async (): Promise<{
   return response.data;
 };
 
+/**
+ * Obtém lista de alunos que já responderam
+ */
+export const getAlunosQueResponderam = async (): Promise<{
+  total: number;
+  alunos: {
+    matricula: string;
+    nome: string;
+    curso: string | null;
+    nivel_risco: string;
+    score_total: number;
+    data_resposta: string;
+  }[];
+}> => {
+  const response = await api.get('/questionario/alunos/responderam');
+  return response.data;
+};
+
 export default {
   getPerguntas,
   responderQuestionario,

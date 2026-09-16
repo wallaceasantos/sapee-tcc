@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Eye, User, BookOpen, Clock, BarChart3, Plus, Search, TrendingUp, AlertCircle, CheckCircle, ExternalLink, AlertTriangle as AlertTriangleIcon, Bot, Check, X, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -7,60 +7,95 @@ import { useToast } from '../components/ui/Toast';
 import api from '../services/api';
 import IntervencaoModal from '../components/IntervencaoModal';
 import { cn } from '../utils';
+import { IntervencaoCreate, StatusIntervencao } from '../types';
+
+interface AlunoMonitoramento {
+  matricula: string;
+  nome: string;
+  curso?: string;
+  periodo?: number;
+  media_geral?: number;
+  frequencia?: number;
+  risco_evasao?: number;
+  motivo_risco?: string;
+  trabalha?: boolean;
+  carga_horaria_trabalho?: number;
+  renda_familiar?: number;
+  tempo_deslocamento?: number;
+  dificuldade_acesso?: string;
+  possui_computador?: boolean;
+  possui_internet?: boolean;
+  beneficiario_bolsa_familia?: boolean;
+}
+
+interface IntervencaoAtiva {
+  id: number;
+  aluno_id: string;
+  aluno?: AlunoMonitoramento;
+  aluno_nome?: string;
+  tipo: string;
+  descricao?: string;
+  status: string;
+  prioridade?: string;
+  motivo_risco?: string;
+  observacoes?: string;
+  data_intervencao?: string;
+  data_limite?: string;
+  criado_at?: string;
+  usuario?: { nome?: string };
+}
+
+interface RascunhoIntervencao {
+  id: number;
+  aluno_id: string;
+  tipo: string;
+  descricao?: string;
+  prioridade?: string;
+  motivo_risco?: string;
+}
 
 export default function AlunosMonitoramento() {
   const { token } = useAuth();
   const { addToast } = useToast();
-  const [alunos, setAlunos] = useState<any[]>([]);
-  const [rascunhos, setRascunhos] = useState<any[]>([]);
+  const [alunos, setAlunos] = useState<AlunoMonitoramento[]>([]);
+  const [rascunhos, setRascunhos] = useState<RascunhoIntervencao[]>([]);
   const [gerandoRascunhos, setGerandoRascunhos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [alunoSelecionado, setAlunoSelecionado] = useState<any>(null);
+  const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoMonitoramento | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [intervencoesAtivas, setIntervencoesAtivas] = useState<any[]>([]);
+  const [intervencoesAtivas, setIntervencoesAtivas] = useState<IntervencaoAtiva[]>([]);
   
   // Estados para edição de rascunho e valores iniciais do modal
-  const [modalInitialValues, setModalInitialValues] = useState<any>(null);
+  const [modalInitialValues, setModalInitialValues] = useState<Partial<IntervencaoCreate> | null>(null);
   const [editingRascunhoId, setEditingRascunhoId] = useState<number | null>(null);
   
   // Estados para verificação de duplicidade
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-  const [pendingIntervencao, setPendingIntervencao] = useState<any>(null);
+  const [pendingIntervencao, setPendingIntervencao] = useState<IntervencaoAtiva | null>(null);
   
   // Estados para evolução e notas
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [intervencaoSelecionada, setIntervencaoSelecionada] = useState<any>(null);
+  const [intervencaoSelecionada, setIntervencaoSelecionada] = useState<IntervencaoAtiva | null>(null);
   const [observacao, setObservacao] = useState('');
   const [savingNote, setSavingNote] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      const lista = await loadAlunosMonitoramento();
-      // Carrega intervenções APÓS carregar os alunos e passa a lista como argumento
-      await loadIntervencoesAtivas(lista);
-      // Carrega rascunhos relevantes
-      await loadRascunhos(lista);
-    };
-    loadData();
-  }, []);
-
-  const loadAlunosMonitoramento = async () => {
+  const loadAlunosMonitoramento = useCallback(async () => {
     if (!token) return [];
     try {
       const data = await api.alunos.listMonitoramento(token);
       const lista = data.alunos || [];
       setAlunos(lista);
       return lista;
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao carregar alunos' });
       return [];
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, addToast]);
 
-  const loadIntervencoesAtivas = async (listaAlunos: any[]) => {
+  const loadIntervencoesAtivas = useCallback(async (listaAlunos: AlunoMonitoramento[]) => {
     if (!token || listaAlunos.length === 0) return;
     try {
       // Busca as últimas 50 intervenções
@@ -73,12 +108,11 @@ export default function AlunosMonitoramento() {
       
       // Filtra intervenções desses alunos com verificação robusta
       // E remove RASCUNHOS e CANCELADAS desta lista
-      const intervencoesAlunosMedio = data.filter((int: any) => {
+      const intervencoesAlunosMedio = data.filter((int: IntervencaoAtiva) => {
         // 1. Verifica se pertence a um aluno da lista
         const rawIds = [
           int.aluno_id,
-          int.aluno?.matricula,
-          int.aluno_id_str
+          int.aluno?.matricula
         ];
         
         const idsToCheck = rawIds
@@ -92,21 +126,21 @@ export default function AlunosMonitoramento() {
 
         return pertenceAluno && statusValido;
       });
-      
+
       setIntervencoesAtivas(intervencoesAlunosMedio);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao carregar intervenções ativas:', error);
     }
-  };
+  }, [token]);
 
   // Funções de gestão de rascunhos (Filtra APENAS rascunhos de risco MÉDIO)
-  const loadRascunhos = async (listaAlunos: any[]) => {
+  const loadRascunhos = useCallback(async (_listaAlunos: AlunoMonitoramento[]) => {
     if (!token) return;
     try {
       const allRascunhos = await api.intervencoes.listRascunhos(token);
 
       // Filtra apenas rascunhos de risco MÉDIO usando o campo motivo_risco
-      const rascunhosMedioRisco = allRascunhos.filter((r: any) => {
+      const rascunhosMedioRisco = allRascunhos.filter((r: RascunhoIntervencao) => {
         if (!r.motivo_risco) return false;
         try {
           const motivo = JSON.parse(r.motivo_risco);
@@ -118,10 +152,21 @@ export default function AlunosMonitoramento() {
       });
       
       setRascunhos(rascunhosMedioRisco);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao carregar rascunhos:', error);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      const lista = await loadAlunosMonitoramento();
+      // Carrega intervenções APÓS carregar os alunos e passa a lista como argumento
+      await loadIntervencoesAtivas(lista);
+      // Carrega rascunhos relevantes
+      await loadRascunhos(lista);
+    };
+    loadData();
+  }, [loadAlunosMonitoramento, loadIntervencoesAtivas, loadRascunhos]);
 
   const handleGerarSugestoes = async () => {
     if (!token) return;
@@ -137,8 +182,8 @@ export default function AlunosMonitoramento() {
         loadIntervencoesAtivas(lista),
         loadRascunhos(lista)
       ]);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao gerar sugestões' });
     } finally {
       setGerandoRascunhos(false);
     }
@@ -154,8 +199,8 @@ export default function AlunosMonitoramento() {
         loadIntervencoesAtivas(lista),
         loadRascunhos(lista)
       ]);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao aprovar rascunho' });
     }
   };
 
@@ -167,18 +212,18 @@ export default function AlunosMonitoramento() {
       addToast({ type: 'info', title: 'Rejeitado', message: 'Sugestão removida' });
       const lista = await loadAlunosMonitoramento();
       await loadRascunhos(lista);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao rejeitar rascunho' });
     }
   };
 
-  const handleEditarRascunho = (rascunho: any) => {
+  const handleEditarRascunho = (rascunho: RascunhoIntervencao) => {
     // 1. Preparar os valores iniciais baseados no rascunho para pré-preencher o formulário
     setModalInitialValues({
         tipo: rascunho.tipo,
         descricao: rascunho.descricao || '',
-        prioridade: rascunho.prioridade,
-        status: 'PENDENTE' // Ao salvar a edição, a intervenção passa a ser Pendente
+        prioridade: rascunho.prioridade as 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE',
+        status: StatusIntervencao.PENDENTE // Ao salvar a edição, a intervenção passa a ser Pendente
     });
     
     // 2. Armazena o ID do rascunho para que possamos deletá-lo APÓS o salvamento da nova intervenção
@@ -192,7 +237,7 @@ export default function AlunosMonitoramento() {
     }
   };
 
-  const handleCriarIntervencao = (aluno: any) => {
+  const handleCriarIntervencao = (aluno: AlunoMonitoramento) => {
     // Verifica se já existe intervenção ativa para este aluno na lista carregada
     const intervencaoExistente = intervencoesAtivas.find(
       (int) => 
@@ -206,11 +251,11 @@ export default function AlunosMonitoramento() {
       setShowDuplicateWarning(true);
     } else {
       // Lógica de sugestão inteligente baseada no perfil do aluno
-      const freq = aluno.frequencia ? parseFloat(aluno.frequencia) : 100;
-      const media = aluno.media_geral ? parseFloat(aluno.media_geral) : 10;
+      const freq = aluno.frequencia ?? 100;
+      const media = aluno.media_geral ?? 10;
       
       let tipoSugerido = "Acompanhamento Preventivo";
-      let prioridadeSugerida: any = "MEDIA";
+      let prioridadeSugerida: 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE' = "MEDIA";
       let descricaoSugerida = "";
 
       if (freq < 60) {
@@ -240,7 +285,7 @@ export default function AlunosMonitoramento() {
           tipo: tipoSugerido,
           descricao: descricaoSugerida,
           prioridade: prioridadeSugerida,
-          status: 'PENDENTE'
+          status: StatusIntervencao.PENDENTE
       });
 
       // Abre o modal de criação
@@ -249,18 +294,19 @@ export default function AlunosMonitoramento() {
     }
   };
 
-  const handleSaveIntervencao = async (data: any) => {
+  const handleSaveIntervencao = async (data: IntervencaoCreate & { matricula?: string }) => {
     if (!token) return;
     const { matricula, ...intervencaoData } = data;
+    if (!matricula) return;
     try {
-      await api.intervencoes.create(token, matricula || alunoSelecionado?.matricula, intervencaoData);
+      await api.intervencoes.create(token, matricula, intervencaoData);
       addToast({ type: 'success', title: 'Sucesso', message: 'Intervenção criada com sucesso' });
       
       // Se estava editando um rascunho, deletamos o rascunho original agora que a nova foi criada
       if (editingRascunhoId) {
           try {
               await api.intervencoes.rejeitar(token, editingRascunhoId, 'Substituído pela intervenção editada');
-          } catch (e) { /* ignora erro na limpeza do rascunho */ }
+          } catch { /* ignora erro na limpeza do rascunho */ }
       }
 
       setShowCreateModal(false);
@@ -274,12 +320,12 @@ export default function AlunosMonitoramento() {
         loadIntervencoesAtivas(listaAtualizada),
         loadRascunhos(listaAtualizada)
       ]);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao salvar intervenção' });
     }
   };
 
-  const handleAtualizarStatus = (intervencao: any) => {
+  const handleAtualizarStatus = (intervencao: IntervencaoAtiva) => {
     setIntervencaoSelecionada(intervencao);
     setObservacao(intervencao.observacoes || '');
     setShowStatusModal(true);
@@ -298,8 +344,8 @@ export default function AlunosMonitoramento() {
       // Recarrega as intervenções para atualizar os dados
       const lista = await loadAlunosMonitoramento();
       await loadIntervencoesAtivas(lista);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao salvar observação' });
     } finally {
       setSavingNote(false);
     }
@@ -313,8 +359,8 @@ export default function AlunosMonitoramento() {
       addToast({ type: 'info', title: 'Excluída', message: 'Intervenção excluída com sucesso' });
       const lista = await loadAlunosMonitoramento();
       await loadIntervencoesAtivas(lista);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao excluir intervenção' });
     }
   };
 
@@ -325,8 +371,8 @@ export default function AlunosMonitoramento() {
       addToast({ type: 'success', title: 'Status atualizado', message: `Intervenção marcada como ${novoStatus.replace('_', ' ')}` });
       const lista = await loadAlunosMonitoramento();
       await loadIntervencoesAtivas(lista);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao atualizar status' });
     }
   };
 
@@ -556,9 +602,9 @@ export default function AlunosMonitoramento() {
                       <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Media</p>
                       <p className={cn(
                         "font-bold text-[10px] md:text-xs",
-                        aluno.media_geral >= 7 ? "text-emerald-600" :
-                        aluno.media_geral >= 5 ? "text-amber-600" : "text-red-500"
-                      )}>{aluno.media_geral}</p>
+                        (aluno.media_geral ?? 0) >= 7 ? "text-emerald-600" :
+                        (aluno.media_geral ?? 0) >= 5 ? "text-amber-600" : "text-red-500"
+                      )}>{aluno.media_geral ?? 0}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -567,9 +613,9 @@ export default function AlunosMonitoramento() {
                       <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Freq</p>
                       <p className={cn(
                         "font-bold text-[10px] md:text-xs",
-                        aluno.frequencia >= 85 ? "text-emerald-600" :
-                        aluno.frequencia >= 75 ? "text-amber-600" : "text-red-500"
-                      )}>{aluno.frequencia}%</p>
+                        (aluno.frequencia ?? 0) >= 85 ? "text-emerald-600" :
+                        (aluno.frequencia ?? 0) >= 75 ? "text-amber-600" : "text-red-500"
+                      )}>{aluno.frequencia ?? 0}%</p>
                     </div>
                   </div>
                 </div>
@@ -583,7 +629,7 @@ export default function AlunosMonitoramento() {
                 )}
 
                 {/* Contexto Social */}
-                {(aluno.trabalha || aluno.renda_familiar || aluno.tempo_deslocamento > 60 || 
+                {(aluno.trabalha || aluno.renda_familiar || (aluno.tempo_deslocamento ?? 0) > 60 || 
                   aluno.dificuldade_acesso === 'DIFICIL' || aluno.dificuldade_acesso === 'MUITO_DIFICIL' ||
                   !aluno.possui_computador || !aluno.possui_internet || aluno.beneficiario_bolsa_familia) && (
                   <div className="p-2 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shrink-0">
@@ -599,7 +645,7 @@ export default function AlunosMonitoramento() {
                           💰 R${aluno.renda_familiar.toFixed(0)}
                         </span>
                       )}
-                      {aluno.tempo_deslocamento > 60 && (
+                      {(aluno.tempo_deslocamento ?? 0) > 60 && (
                         <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full whitespace-nowrap">
                           🚌 {aluno.tempo_deslocamento}min
                         </span>
@@ -658,7 +704,7 @@ export default function AlunosMonitoramento() {
         alunoNome={alunoSelecionado?.nome || ''}
         matricula={alunoSelecionado?.matricula}
         isSaving={false}
-        initialValues={modalInitialValues}
+        initialValues={modalInitialValues ?? undefined}
       />
 
       {/* Modal de Aviso de Duplicidade */}
@@ -713,7 +759,11 @@ export default function AlunosMonitoramento() {
                       onClick={() => {
                         setShowDuplicateWarning(false);
                         setPendingIntervencao(null);
-                        setAlunoSelecionado(pendingIntervencao.aluno || { matricula: pendingIntervencao.aluno_id, nome: pendingIntervencao.aluno_nome });
+                        setAlunoSelecionado({
+                          ...(pendingIntervencao.aluno || {}),
+                          matricula: pendingIntervencao.aluno_id,
+                          nome: pendingIntervencao.aluno_nome ?? '',
+                        } as typeof alunoSelecionado);
                         setShowCreateModal(true);
                       }}
                       className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
@@ -844,23 +894,25 @@ export default function AlunosMonitoramento() {
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
             {intervencoesAtivas.map((int) => {
               // Extrair dados do aluno e do motivo de risco
-              const aluno = int.aluno || {};
+              const aluno: Partial<AlunoMonitoramento> = int.aluno || {};
               let scoreInicial = null;
               try {
                 if (int.motivo_risco) {
                   const motivo = JSON.parse(int.motivo_risco);
                   scoreInicial = motivo.score;
                 }
-              } catch (e) {}
+              } catch {
+                // Ignora erro de parse do motivo de risco
+              }
 
               // Helper para determinar tags de risco
-              const getRiscoTags = (aluno: any) => {
+              const getRiscoTags = (aluno: Partial<AlunoMonitoramento>) => {
                 const tags: string[] = [];
                 if (aluno.trabalha) tags.push('🏭 Trabalha');
-                if (aluno.bolsa_familia) tags.push('🏛️ Bolsa Família');
+                if (aluno.beneficiario_bolsa_familia) tags.push('🏛️ Bolsa Família');
                 if (!aluno.possui_computador) tags.push('💻 Sem PC');
                 if (!aluno.possui_internet) tags.push('🌐 Sem Internet');
-                if (aluno.tempo_deslocamento > 90) tags.push('🚌 Longe');
+                if (aluno.tempo_deslocamento && aluno.tempo_deslocamento > 90) tags.push('🚌 Longe');
                 if (aluno.frequencia && aluno.frequencia < 75) tags.push('📉 Freq Baixa');
                 if (aluno.media_geral && aluno.media_geral < 5) tags.push('📉 Média Baixa');
                 return tags;
@@ -944,7 +996,7 @@ export default function AlunosMonitoramento() {
                     {(() => {
                       const hoje = new Date();
                       const limite = new Date(int.data_limite);
-                      const inicio = new Date(int.criado_at || int.data_intervencao);
+                      const inicio = new Date((int.criado_at || int.data_intervencao) ?? '');
                       const diffDias = (limite.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
                       const mesesPassados = Math.max(0, Math.floor((hoje.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24 * 30)));
                       

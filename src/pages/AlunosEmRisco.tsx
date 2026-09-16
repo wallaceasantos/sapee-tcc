@@ -7,32 +7,86 @@ import { useToast } from '../components/ui/Toast';
 import api from '../services/api';
 import IntervencaoModal from '../components/IntervencaoModal';
 import { cn } from '../utils';
+import { IntervencaoCreate, StatusIntervencao } from '../types';
+
+interface AlunoEmRisco {
+  matricula: string;
+  nome: string;
+  curso?: string;
+  periodo?: number;
+  media_geral?: number;
+  frequencia?: number;
+  nivel_risco?: string;
+  risco_evasao?: number;
+  motivo_risco?: string;
+  predicao_atual?: {
+    nivel_risco: string;
+    risco_evasao?: number;
+  };
+  trabalha?: boolean;
+  carga_horaria_trabalho?: number;
+  renda_familiar?: number;
+  tempo_deslocamento?: number;
+  dificuldade_acesso?: string;
+  possui_computador?: boolean;
+  possui_internet?: boolean;
+  beneficiario_bolsa_familia?: boolean;
+  nome_responsavel_1?: string;
+  parentesco_responsavel_1?: string;
+  telefone_responsavel_1?: string;
+}
+
+interface IntervencaoItem {
+  id: number;
+  aluno_id: string;
+  aluno?: AlunoEmRisco;
+  aluno_nome?: string;
+  tipo: string;
+  descricao?: string;
+  status: string;
+  prioridade?: string;
+  motivo_risco?: string;
+  observacoes?: string;
+  data_intervencao?: string;
+  data_limite?: string;
+  criado_at?: string;
+  usuario?: { nome?: string };
+}
+
+interface RascunhoIntervencao {
+  id: number;
+  aluno_id: string;
+  tipo: string;
+  descricao?: string;
+  prioridade?: string;
+  motivo_risco?: string;
+}
 
 export default function AlunosEmRisco() {
   const { token } = useAuth();
   const { addToast } = useToast();
-  const [alunos, setAlunos] = useState<any[]>([]);
+  const [alunos, setAlunos] = useState<AlunoEmRisco[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [alunoSelecionado, setAlunoSelecionado] = useState<any>(null);
+  const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoEmRisco | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [alunosMap, setAlunosMap] = useState<Record<string, string>>({}); // Mapa matrícula -> nome
-  const [intervencoesRecentes, setIntervencoesRecentes] = useState<any[]>([]);
-  const [alunosComIntervencao, setAlunosComIntervencao] = useState<any[]>([]);
-  const [rascunhos, setRascunhos] = useState<any[]>([]);
+  const [intervencoesRecentes, setIntervencoesRecentes] = useState<IntervencaoItem[]>([]);
+  const [alunosComIntervencao, setAlunosComIntervencao] = useState<IntervencaoItem[]>([]);
+  const [rascunhos, setRascunhos] = useState<RascunhoIntervencao[]>([]);
   const [gerandoRascunhos, setGerandoRascunhos] = useState(false);
   
   // Estados para edição de rascunho e valores iniciais do modal
-  const [modalInitialValues, setModalInitialValues] = useState<any>(null);
+  const [modalInitialValues, setModalInitialValues] = useState<Partial<IntervencaoCreate> | null>(null);
   const [editingRascunhoId, setEditingRascunhoId] = useState<number | null>(null);
   
   // Estados para verificação de duplicidade
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-  const [pendingIntervencao, setPendingIntervencao] = useState<any>(null);
+  const [pendingIntervencao, setPendingIntervencao] = useState<IntervencaoItem | null>(null);
   
   // Estados para gestão de intervenções e rascunhos
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [intervencaoSelecionada, setIntervencaoSelecionada] = useState<any>(null);
+  const [intervencaoSelecionada, setIntervencaoSelecionada] = useState<IntervencaoItem | null>(null);
   const [observacao, setObservacao] = useState('');
   const [savingNote, setSavingNote] = useState(false);
 
@@ -60,7 +114,7 @@ export default function AlunosEmRisco() {
       
       // Atualiza o mapa de nomes com os alunos carregados
       const novoMap = { ...alunosMap };
-      lista.forEach((a: any) => {
+      lista.forEach((a: AlunoEmRisco) => {
         if (a.matricula && a.nome) {
           novoMap[String(a.matricula)] = a.nome;
         }
@@ -68,8 +122,8 @@ export default function AlunosEmRisco() {
       setAlunosMap(novoMap);
       
       return lista;
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao carregar alunos em risco' });
       return [];
     } finally {
       setLoading(false);
@@ -83,7 +137,7 @@ export default function AlunosEmRisco() {
       
       // Popula o mapa de alunos com base nas intervenções existentes
       const novoMap = { ...alunosMap };
-      data.forEach((int: any) => {
+      data.forEach((int: IntervencaoItem) => {
         if (int.aluno?.matricula && int.aluno?.nome) {
           novoMap[String(int.aluno.matricula)] = int.aluno.nome;
         }
@@ -91,7 +145,7 @@ export default function AlunosEmRisco() {
       setAlunosMap(novoMap);
 
       // 1. Intervenções Recentes (Tudo que não é Rascunho ou Cancelado)
-      const recentes = data.filter((int: any) => {
+      const recentes = data.filter((int) => {
         const status = String(int.status || '').toUpperCase();
         return status !== 'RASCUNHO' && status !== 'CANCELADA';
       });
@@ -99,7 +153,7 @@ export default function AlunosEmRisco() {
 
       // 2. Filtrar APENAS intervenções de alunos com risco ALTO/MUITO_ALTO
       // Este módulo é exclusivo para alunos de alto risco
-      const ativas = recentes.filter((int: any) => {
+      const ativas = recentes.filter((int) => {
         const status = String(int.status || '').toUpperCase();
         const nivelRisco = int.aluno?.predicao_atual?.nivel_risco || 
                           (int.motivo_risco ? JSON.parse(int.motivo_risco).nivel : null);
@@ -108,7 +162,7 @@ export default function AlunosEmRisco() {
       });
       setAlunosComIntervencao(ativas);
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao carregar intervenções recentes:', error);
     }
   };
@@ -121,22 +175,24 @@ export default function AlunosEmRisco() {
       addToast({ type: 'success', title: 'Aprovado', message: 'Intervenção criada e pendente' });
       
       // 2. Recarrega a lista de alunos primeiro (para atualizar quem "precisa de atenção")
-      const listaAlunos = await loadAlunosEmRisco();
+      await loadAlunosEmRisco();
       
       // 3. Recarrega rascunhos e intervenções ativas em paralelo
       await Promise.all([
         loadRascunhos(),
         loadIntervencoesRecentes()
       ]);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao aprovar rascunho' });
     }
   };
 
-  const handleCriarIntervencao = (aluno: any) => {
+  const handleCriarIntervencao = async (aluno: AlunoEmRisco) => {
+    if (!token) return;
+
     // Verifica se já existe intervenção ativa para este aluno
     const intervencaoExistente = intervencoesRecentes.find(
-      (int) => 
+      (int) =>
         (String(int.aluno_id) === String(aluno.matricula) || int.aluno?.matricula === aluno.matricula) &&
         (int.status === 'PENDENTE' || int.status === 'EM_ANDAMENTO')
     );
@@ -145,11 +201,49 @@ export default function AlunosEmRisco() {
       // Se existe, mostra o aviso
       setPendingIntervencao(intervencaoExistente);
       setShowDuplicateWarning(true);
-    } else {
-      // Se não existe, abre o modal de criação
-      setAlunoSelecionado(aluno);
-      setShowCreateModal(true);
+      return;
     }
+
+    // Se não existe, sugere automaticamente com base no perfil do aluno
+    const freq = aluno.frequencia ?? 100;
+    const media = aluno.media_geral ?? 10;
+    const risco = aluno.risco_evasao ?? 0;
+
+    let tipoSugerido = 'Intervenção Pedagógica';
+    let prioridadeSugerida: 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE' = 'MEDIA';
+    let descricaoSugerida = '';
+
+    if (risco >= 80 || media < 5) {
+      tipoSugerido = 'Reforço Escolar Urgente';
+      prioridadeSugerida = 'URGENTE';
+      descricaoSugerida = `Risco elevado (${risco}%). Média crítica (${media}). Encaminhar para reforço imediato.`;
+    } else if (freq < 60) {
+      tipoSugerido = 'Reunião com Aluno';
+      prioridadeSugerida = 'ALTA';
+      descricaoSugerida = `Frequência crítica (${freq}%). Conversar sobre permanência.`;
+    } else if (freq < 75) {
+      tipoSugerido = 'Orientação Pedagógica';
+      prioridadeSugerida = 'MEDIA';
+      descricaoSugerida = `Frequência em atenção (${freq}%). Reforçar importância da presença.`;
+    } else if (aluno.trabalha) {
+      tipoSugerido = 'Apoio Social';
+      prioridadeSugerida = 'MEDIA';
+      descricaoSugerida = 'Aluno trabalhador. Verificar conciliação estudo/trabalho.';
+    } else {
+      tipoSugerido = 'Acompanhamento Preventivo';
+      prioridadeSugerida = 'MEDIA';
+      descricaoSugerida = 'Risco alto identificado. Manter acompanhamento próximo.';
+    }
+
+    setModalInitialValues({
+      tipo: tipoSugerido,
+      descricao: descricaoSugerida,
+      prioridade: prioridadeSugerida,
+      status: StatusIntervencao.PENDENTE,
+    });
+
+    setAlunoSelecionado(aluno);
+    setShowCreateModal(true);
   };
 
   // Função de gestão de rascunhos (Filtra APENAS rascunhos de risco ALTO/MUITO_ALTO)
@@ -160,7 +254,7 @@ export default function AlunosEmRisco() {
       
       // Filtra apenas rascunhos que são de risco ALTO ou MUITO_ALTO
       // Usa o campo motivo_risco (JSON) que contém o nível original
-      const rascunhosAltoRisco = allRascunhos.filter((r: any) => {
+      const rascunhosAltoRisco = allRascunhos.filter((r: RascunhoIntervencao) => {
         if (!r.motivo_risco) return false;
         try {
           const motivo = JSON.parse(r.motivo_risco);
@@ -172,7 +266,7 @@ export default function AlunosEmRisco() {
       });
       
       setRascunhos(rascunhosAltoRisco);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao carregar rascunhos:', error);
     }
   };
@@ -185,14 +279,14 @@ export default function AlunosEmRisco() {
       addToast({ type: 'success', title: 'Sugestões geradas', message: 'Rascunhos criados com sucesso' });
       
       // Recarrega alunos e obtém a lista atualizada
-      const listaAtualizada = await loadAlunosEmRisco();
+      await loadAlunosEmRisco();
       
       await Promise.all([
         loadRascunhos(),
         loadIntervencoesRecentes()
       ]);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao gerar sugestões' });
     } finally {
       setGerandoRascunhos(false);
     }
@@ -205,18 +299,18 @@ export default function AlunosEmRisco() {
       await api.intervencoes.rejeitar(token, id, 'Rejeitado pelo coordenador');
       addToast({ type: 'info', title: 'Rejeitado', message: 'Sugestão removida' });
       await loadRascunhos();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao rejeitar rascunho' });
     }
   };
 
-  const handleEditarRascunho = (rascunho: any) => {
+  const handleEditarRascunho = (rascunho: RascunhoIntervencao) => {
     // 1. Preparar os valores iniciais baseados no rascunho para pré-preencher o formulário
     setModalInitialValues({
         tipo: rascunho.tipo,
         descricao: rascunho.descricao || '',
-        prioridade: rascunho.prioridade,
-        status: 'PENDENTE'
+        prioridade: rascunho.prioridade as 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE',
+        status: StatusIntervencao.PENDENTE
     });
     
     // 2. Armazena o ID do rascunho para que possamos deletá-lo APÓS o salvamento da nova intervenção
@@ -230,18 +324,19 @@ export default function AlunosEmRisco() {
     }
   };
 
-  const handleSaveIntervencao = async (data: any) => {
+  const handleSaveIntervencao = async (data: IntervencaoCreate & { matricula?: string }) => {
     if (!token) return;
     const { matricula, ...intervencaoData } = data;
+    if (!matricula) return;
     try {
-      await api.intervencoes.create(token, matricula || alunoSelecionado?.matricula, intervencaoData);
+      await api.intervencoes.create(token, matricula, intervencaoData);
       addToast({ type: 'success', title: 'Sucesso', message: 'Intervenção criada com sucesso' });
       
       // Se estava editando um rascunho, deletamos o rascunho original agora que a nova foi criada
       if (editingRascunhoId) {
           try {
               await api.intervencoes.rejeitar(token, editingRascunhoId, 'Substituído pela intervenção editada');
-          } catch (e) { /* ignora erro na limpeza do rascunho */ }
+          } catch { /* ignora erro na limpeza do rascunho */ }
       }
       
       setShowCreateModal(false);
@@ -257,13 +352,13 @@ export default function AlunosEmRisco() {
           loadRascunhos()
         ]);
       }, 500);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao salvar intervenção' });
     }
   };
 
   // Funções de gestão de intervenções
-  const handleAtualizarStatus = (intervencao: any) => {
+  const handleAtualizarStatus = (intervencao: IntervencaoItem) => {
     setIntervencaoSelecionada(intervencao);
     setObservacao(intervencao.observacoes || '');
     setShowStatusModal(true);
@@ -278,8 +373,8 @@ export default function AlunosEmRisco() {
       setShowStatusModal(false);
       setIntervencaoSelecionada(null);
       await loadIntervencoesRecentes();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao salvar observação' });
     } finally {
       setSavingNote(false);
     }
@@ -292,8 +387,8 @@ export default function AlunosEmRisco() {
       await api.intervencoes.delete(token, id);
       addToast({ type: 'info', title: 'Excluída', message: 'Intervenção excluída com sucesso' });
       await loadIntervencoesRecentes();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao excluir intervenção' });
     }
   };
 
@@ -303,8 +398,8 @@ export default function AlunosEmRisco() {
       await api.intervencoes.update(token, id, { status: novoStatus });
       addToast({ type: 'success', title: 'Status atualizado', message: `Intervenção marcada como ${novoStatus.replace('_', ' ')}` });
       await loadIntervencoesRecentes();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao atualizar status' });
     }
   };
 
@@ -506,9 +601,9 @@ export default function AlunosEmRisco() {
                       <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Média</p>
                       <p className={cn(
                         "font-bold text-[10px] md:text-xs",
-                        aluno.media_geral >= 7 ? "text-emerald-600" :
-                        aluno.media_geral >= 5 ? "text-amber-600" : "text-red-500"
-                      )}>{aluno.media_geral}</p>
+                        (aluno.media_geral ?? 0) >= 7 ? "text-emerald-600" :
+                        (aluno.media_geral ?? 0) >= 5 ? "text-amber-600" : "text-red-500"
+                      )}>{aluno.media_geral ?? 0}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -517,9 +612,9 @@ export default function AlunosEmRisco() {
                       <p className="text-[10px] md:text-xs text-gray-500 dark:text-slate-400">Freq</p>
                       <p className={cn(
                         "font-bold text-[10px] md:text-xs",
-                        aluno.frequencia >= 85 ? "text-emerald-600" :
-                        aluno.frequencia >= 75 ? "text-amber-600" : "text-red-500"
-                      )}>{aluno.frequencia}%</p>
+                        (aluno.frequencia ?? 0) >= 85 ? "text-emerald-600" :
+                        (aluno.frequencia ?? 0) >= 75 ? "text-amber-600" : "text-red-500"
+                      )}>{aluno.frequencia ?? 0}%</p>
                     </div>
                   </div>
                 </div>
@@ -533,7 +628,7 @@ export default function AlunosEmRisco() {
                 )}
 
                 {/* Contexto Social */}
-                {(aluno.trabalha || aluno.renda_familiar || aluno.tempo_deslocamento > 60 || 
+                {(aluno.trabalha || aluno.renda_familiar || (aluno.tempo_deslocamento ?? 0) > 60 || 
                   aluno.dificuldade_acesso === 'DIFICIL' || aluno.dificuldade_acesso === 'MUITO_DIFICIL' ||
                   !aluno.possui_computador || !aluno.possui_internet || aluno.beneficiario_bolsa_familia) && (
                   <div className="p-2 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 shrink-0">
@@ -549,7 +644,7 @@ export default function AlunosEmRisco() {
                           💰 R${aluno.renda_familiar.toFixed(0)}
                         </span>
                       )}
-                      {aluno.tempo_deslocamento > 60 && (
+                      {(aluno.tempo_deslocamento ?? 0) > 60 && (
                         <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full whitespace-nowrap">
                           🚌 {aluno.tempo_deslocamento}min
                         </span>
@@ -622,7 +717,7 @@ export default function AlunosEmRisco() {
                                 modulo_origem: 'ALUNOS_EM_RISCO',
                               });
                               
-                              const telefone = aluno.telefone_responsavel_1.replace(/\D/g, '');
+                              const telefone = (aluno.telefone_responsavel_1 ?? '').replace(/\D/g, '');
                               const mensagemCodificada = encodeURIComponent(comunicacao.mensagem);
                               window.open(`https://wa.me/55${telefone}?text=${mensagemCodificada}`, '_blank', 'noopener noreferrer');
                               
@@ -711,7 +806,11 @@ export default function AlunosEmRisco() {
                       onClick={() => {
                         setShowDuplicateWarning(false);
                         setPendingIntervencao(null);
-                        setAlunoSelecionado(pendingIntervencao.aluno || { matricula: pendingIntervencao.aluno_id, nome: pendingIntervencao.aluno_nome });
+                        setAlunoSelecionado({
+                          ...(pendingIntervencao.aluno || {}),
+                          matricula: pendingIntervencao.aluno_id,
+                          nome: pendingIntervencao.aluno_nome ?? '',
+                        } as typeof alunoSelecionado);
                         setShowCreateModal(true);
                       }}
                       className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
@@ -739,7 +838,7 @@ export default function AlunosEmRisco() {
         alunoNome={alunoSelecionado?.nome || ''}
         matricula={alunoSelecionado?.matricula}
         isSaving={false}
-        initialValues={modalInitialValues}
+        initialValues={modalInitialValues ?? undefined}
       />
 
       {/* Seção Única: Acompanhamento de Intervenções Ativas */}
@@ -764,23 +863,25 @@ export default function AlunosEmRisco() {
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
             {alunosComIntervencao.map((int) => {
               // Extrair dados do aluno e do motivo de risco
-              const aluno = int.aluno || {};
+              const aluno: Partial<AlunoEmRisco> = int.aluno || {};
               let scoreInicial = null;
               try {
                 if (int.motivo_risco) {
                   const motivo = JSON.parse(int.motivo_risco);
                   scoreInicial = motivo.score;
                 }
-              } catch (e) {}
+              } catch {
+                // Ignora erro de parse do motivo de risco
+              }
 
               // Helper para determinar tags de risco
-              const getRiscoTags = (aluno: any) => {
+              const getRiscoTags = (aluno: Partial<AlunoEmRisco>) => {
                 const tags: string[] = [];
                 if (aluno.trabalha) tags.push('🏭 Trabalha');
-                if (aluno.bolsa_familia) tags.push('🏛️ Bolsa Família');
+                if (aluno.beneficiario_bolsa_familia) tags.push('🏛️ Bolsa Família');
                 if (!aluno.possui_computador) tags.push('💻 Sem PC');
                 if (!aluno.possui_internet) tags.push('🌐 Sem Internet');
-                if (aluno.tempo_deslocamento > 90) tags.push('🚌 Longe');
+                if (aluno.tempo_deslocamento && aluno.tempo_deslocamento > 90) tags.push('🚌 Longe');
                 if (aluno.frequencia && aluno.frequencia < 75) tags.push('📉 Freq Baixa');
                 if (aluno.media_geral && aluno.media_geral < 5) tags.push('📉 Média Baixa');
                 return tags;
@@ -847,7 +948,7 @@ export default function AlunosEmRisco() {
                       {(() => {
                         // Buscar dados do aluno no mapa ou do objeto aluno
                         const matricula = String(int.aluno_id);
-                        const alunoData = int.aluno || {};
+                        const alunoData: Partial<AlunoEmRisco> = int.aluno || {};
                         const nomeResp = alunoData.nome_responsavel_1 || '';
                         const telResp = alunoData.telefone_responsavel_1 || '';
                         const parentesco = alunoData.parentesco_responsavel_1 || '';
@@ -929,7 +1030,7 @@ export default function AlunosEmRisco() {
                     {(() => {
                       const hoje = new Date();
                       const limite = new Date(int.data_limite);
-                      const inicio = new Date(int.criado_at || int.data_intervencao);
+                      const inicio = new Date((int.criado_at || int.data_intervencao) ?? '');
                       const diffDias = (limite.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
                       const mesesPassados = Math.max(0, Math.floor((hoje.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24 * 30)));
 

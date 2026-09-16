@@ -4,8 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import api from '../services/api';
-import { Aluno, NivelRisco } from '../types';
+import { NivelRisco } from '../types';
 
 export interface AlunoAPI {
   matricula: string;

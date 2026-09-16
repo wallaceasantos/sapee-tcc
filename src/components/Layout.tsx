@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, User, FileUp, BarChart3, GraduationCap, Menu, X, LogOut, Bell, Moon, Sun, Search, ChevronRight, ChevronLeft, AlertCircle, History, UserCircle, Shield, Calendar, TrendingUp, Heart, Target, AlertTriangle, FileText, ClipboardList, PieChart, Key, LogOut as LogOutIcon, Eye, BookOpen, BookMarked, Activity, MessageCircle, MessageSquare, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, User, FileUp, BarChart3, GraduationCap, Menu, X, LogOut, Moon, Sun, Search, ChevronRight, ChevronLeft, AlertCircle, History, UserCircle, Target, AlertTriangle, ClipboardList, PieChart, Key, LogOut as LogOutIcon, Eye, BookOpen, BookMarked, Activity, MessageCircle, MessageSquare, Settings } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import HelpDrawer from './HelpDrawer';
 import OnboardingTour from './OnboardingTour';
@@ -10,14 +10,17 @@ import { useAuth } from '../services/AuthContext';
 import { logAction } from '../services/logService';
 import { CanAccess } from './CanAccess';
 import { HelpCircle } from 'lucide-react';
+import { storage } from '../utils/storage';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/alunos', label: 'Alunos', icon: Users },
   { path: '/cadastro', label: 'Cadastro', icon: User },
+  { path: '/cursos', label: 'Cursos', icon: GraduationCap },
   { path: '/disciplinas', label: 'Disciplinas', icon: BookOpen },
   { path: '/notas', label: 'Notas', icon: BookMarked },
   { path: '/faltas', label: 'Lançar Faltas', icon: AlertTriangle },
+  { path: '/frequencia', label: 'Lançar Frequência', icon: Activity },
   { path: '/faltas/alertas', label: 'Alertas de Faltas', icon: AlertCircle },
   { path: '/intervencoes', label: 'Intervenções', icon: GraduationCap },
   { path: '/alunos-em-risco', label: '⚠️ Alunos em Risco', icon: AlertTriangle },
@@ -38,49 +41,31 @@ const navItems = [
   { path: '/usuarios', label: 'Usuários', icon: UserCircle, requiresPermission: 'usuarios' },
 ];
 
-interface Notification {
-  id: string;
-  title: string;
-  description: string;
-  time: string;
-  read: boolean;
-  type: 'alert' | 'info' | 'success';
-}
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: '1', title: 'Risco Crítico Detectado', description: '3 alunos de Informática subiram para risco ALTO.', time: '5 min atrás', read: false, type: 'alert' },
-  { id: '2', title: 'Importação Concluída', description: 'Arquivo alunos_2024_1.csv processado com sucesso.', time: '1h atrás', read: true, type: 'success' },
-  { id: '3', title: 'Novo Relatório Disponível', description: 'O relatório mensal de evasão foi gerado.', time: '2h atrás', read: true, type: 'info' },
-];
-
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('sapee_theme') === 'dark');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => localStorage.getItem('sapee_sidebar') === 'collapsed');
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
-  
+  const [isDarkMode, setIsDarkMode] = useState(() => storage.theme.get() === 'dark');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => storage.sidebar.get() === 'collapsed');
   // Estados para Ajuda e Tour
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     // Verifica se é o primeiro acesso para exibir o tour
-    const hasVisited = localStorage.getItem('sapee_has_visited');
-    const skipTour = localStorage.getItem('sapee_skip_tour');
+    const hasVisited = storage.hasVisited.get();
+    const skipTour = storage.skipTour.get();
 
     // Só mostra o tour se o usuário nunca visitou E não marcou "não mostrar novamente"
     if (!hasVisited && !skipTour) {
       setShowTour(true);
-      localStorage.setItem('sapee_has_visited', 'true');
+      storage.hasVisited.set(true);
     }
   }, []);
 
   const handleResetTour = () => {
-    localStorage.removeItem('sapee_has_visited');
+    storage.hasVisited.clear();
     setShowTour(true);
     setIsHelpOpen(false);
   };
@@ -108,28 +93,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
       document.body.classList.add('dark');
-      localStorage.setItem('sapee_theme', 'dark');
-      console.log('🌙 Dark mode ativado');
+      storage.theme.set('dark');
     } else {
       document.documentElement.classList.remove('dark');
       document.body.classList.remove('dark');
-      localStorage.setItem('sapee_theme', 'light');
-      console.log('☀️ Light mode ativado');
+      storage.theme.set('light');
     }
   }, [isDarkMode]);
 
   const toggleSidebar = () => {
     const newState = !isSidebarCollapsed;
     setIsSidebarCollapsed(newState);
-    localStorage.setItem('sapee_sidebar', newState ? 'collapsed' : 'expanded');
+    storage.sidebar.set(newState ? 'collapsed' : 'expanded');
   };
 
   const handleLogout = () => {
     logAction('Logout', 'Usuário encerrou a sessão');
     logout();
   };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -170,8 +151,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] overflow-x-hidden">
-          {navItems.map((item, index) => {
+        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto max-h-[calc(100vh-200px)] overflow-x-hidden scrollbar-tema">
+          {navItems.map((item) => {
             const isActive = location.pathname === item.path;
 
             // Verificar se requer permissão específica
@@ -364,7 +345,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50 dark:bg-slate-950 min-h-screen">
+        <main className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50 dark:bg-slate-950 min-h-screen scrollbar-tema">
           {children}
         </main>
       </div>
@@ -405,7 +386,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
 
-              <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-100px)]">
+              <nav className="p-4 space-y-2 overflow-y-auto max-h-[calc(100vh-100px)] scrollbar-tema">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.path;
 

@@ -30,6 +30,27 @@ export interface AlunoRisco {
   nivel_risco: 'ALTO' | 'MUITO_ALTO' | 'MEDIO' | 'BAIXO';
 }
 
+interface Predicao {
+  risco_evasao?: number;
+  nivel_risco?: string;
+}
+
+interface AlunoDashboard {
+  matricula: string;
+  nome: string;
+  curso?: { nome?: string } | string;
+  curso_obj?: { nome?: string } | string;
+  curso_nome?: string;
+  predicao_atual?: Predicao;
+  predicao?: Predicao;
+}
+
+const getCursoNome = (aluno: AlunoDashboard): string => {
+  const curso = aluno.curso || aluno.curso_obj;
+  if (typeof curso === 'string') return curso;
+  return curso?.nome || aluno.curso_nome || 'Sem Curso';
+};
+
 export function useDashboardStats() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [riscoPorCurso, setRiscoPorCurso] = useState<RiscoPorCurso[]>([]);
@@ -48,31 +69,16 @@ export function useDashboardStats() {
       }
 
       try {
-        console.log('🔍 Carregando estatísticas do dashboard...');
-        
-        // 1. Carregar estatísticas gerais
         const statsData = await api.dashboard.stats(token);
-        console.log('✅ Stats gerais:', statsData);
         setStats(statsData);
         
-        // 2. Carregar todos os alunos para calcular risco por curso e top alunos
-        console.log('🔍 Carregando lista de alunos...');
         const alunos = await api.alunos.list(token, 0, 1000);
-        console.log('✅ Alunos carregados:', alunos.length);
-        
-        // Debug: Verificar estrutura dos dados
-        if (alunos.length > 0) {
-          console.log('📊 Estrutura do primeiro aluno:', JSON.stringify(alunos[0], null, 2));
-          console.log('📊 Curso do primeiro aluno:', alunos[0].curso);
-        }
         
         // 3. Agrupar risco por curso
         const cursosMap = new Map<string, RiscoPorCurso>();
         
-        alunos.forEach((aluno: any) => {
-          // Acessar curso de múltiplas formas possíveis
-          const cursoObj = aluno.curso || aluno.curso_obj;
-          const curso = cursoObj?.nome || aluno.curso_nome || 'Sem Curso';
+        alunos.forEach((aluno: AlunoDashboard) => {
+          const curso = getCursoNome(aluno);
           
           if (!cursosMap.has(curso)) {
             cursosMap.set(curso, {
@@ -102,24 +108,19 @@ export function useDashboardStats() {
         });
         
         const cursosArray = Array.from(cursosMap.values());
-        console.log('✅ Risco por curso:', cursosArray);
         setRiscoPorCurso(cursosArray);
         
         // 4. Top 5 alunos em risco crítico (ALTO + MUITO_ALTO)
         const alunosComRisco = alunos
-          .filter((aluno: any) => {
+          .filter((aluno: AlunoDashboard) => {
             const predicao = aluno.predicao_atual || aluno.predicao;
             return predicao?.nivel_risco === 'ALTO' || predicao?.nivel_risco === 'MUITO_ALTO';
           })
-          .map((aluno: any) => {
-            // Acessar curso de múltiplas formas possíveis
-            const cursoObj = aluno.curso || aluno.curso_obj;
-            const cursoNome = cursoObj?.nome || aluno.curso_nome || aluno.curso || 'N/A';
-
+          .map((aluno: AlunoDashboard) => {
             return {
               matricula: aluno.matricula,
               nome: aluno.nome,
-              curso: cursoNome,
+              curso: getCursoNome(aluno),
               risco_evasao: aluno.predicao_atual?.risco_evasao || aluno.predicao?.risco_evasao || 0,
               nivel_risco: (aluno.predicao_atual?.nivel_risco || 'ALTO') as 'ALTO' | 'MUITO_ALTO',
             };
@@ -127,7 +128,6 @@ export function useDashboardStats() {
           .sort((a: AlunoRisco, b: AlunoRisco) => b.risco_evasao - a.risco_evasao)
           .slice(0, 5);
         
-        console.log('✅ Top alunos em risco:', alunosComRisco);
         setTopAlunosRisco(alunosComRisco);
         
         setError(null);

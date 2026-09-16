@@ -7,11 +7,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, User, GraduationCap, Wallet, MapPin, AlertCircle, TrendingDown, Calendar, ClipboardList, CheckCircle2, Clock, AlertTriangle, Loader2, TrendingUp, TrendingDown as TrendingDownIcon, XCircle, CheckCircle, Users, BookOpen } from 'lucide-react';
+import { ChevronLeft, User, GraduationCap, Wallet, MapPin, AlertCircle, TrendingDown, Calendar, ClipboardList, CheckCircle2, Clock, AlertTriangle, Loader2, TrendingUp, TrendingDown as TrendingDownIcon, XCircle, Users, BookOpen, Mail } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'motion/react';
-import { cn, getRiscoColor } from '../utils';
-import { StatusIntervencao, NivelRisco } from '../types';
+import { cn } from '../utils';
+import { NivelRisco } from '../types';
 import { RiskBadge, RiskProgressBar } from '../components/ui';
 import { useToast } from '../components/ui/Toast';
 import { logAction } from '../services/logService';
@@ -30,6 +30,29 @@ interface FrequenciaMensal {
   total_aulas_mes: number;
   observacoes?: string;
   data_registro: string;
+}
+
+interface FaltaPorDisciplina {
+  disciplina: string;
+  total_faltas: number;
+  faltas_justificadas: number;
+  faltas_nao_justificadas: number;
+  ultima_falta?: string;
+}
+
+// Interface de Intervenção (API)
+interface Intervencao {
+  id: number;
+  tipo: string;
+  descricao?: string | null;
+  status: string;
+  prioridade: string;
+  data_intervencao: string;
+  data_conclusao?: string | null;
+  data_limite?: string | null;
+  observacoes?: string | null;
+  auto_gerada?: boolean;
+  motivo_risco?: string | null;
 }
 
 // Interface do Aluno (API)
@@ -95,32 +118,18 @@ interface Aluno {
   };
 }
 
-// Interface de Intervenção
-interface Intervencao {
-  id: string;
-  aluno_id: string;
-  data_intervencao: string;
-  tipo: string;
-  descricao: string;
-  status: StatusIntervencao;
-  prioridade: string;
-  usuario?: {
-    nome: string;
-  };
-}
-
 export default function AlunoDetail() {
   const { matricula } = useParams<{ matricula: string }>();
   const navigate = useNavigate();
   const { addToast } = useToast();
   
   const [aluno, setAluno] = useState<Aluno | null>(null);
-  const [intervencoes, setIntervencoes] = useState<Intervencao[]>([]);
   const [historicoFrequencia, setHistoricoFrequencia] = useState<FrequenciaMensal[]>([]);
-  const [faltasPorDisciplina, setFaltasPorDisciplina] = useState<any[]>([]);
+  const [faltasPorDisciplina, setFaltasPorDisciplina] = useState<FaltaPorDisciplina[]>([]);
   const [tendencia, setTendencia] = useState<'subindo' | 'descendo' | 'estavel'>('estavel');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [intervencoes, setIntervencoes] = useState<Intervencao[]>([]);
 
   // Carregar dados do aluno
   useEffect(() => {
@@ -167,9 +176,7 @@ export default function AlunoDetail() {
 
         // Carregar histórico de frequência
         try {
-          console.log('🔍 Buscando frequência para:', matricula);
           const freqData = await api.frequencia.historico(token, matricula);
-          console.log('✅ Frequência encontrada:', freqData);
           setHistoricoFrequencia(freqData);
 
           // Calcular tendência (últimos 3 meses)
@@ -186,8 +193,14 @@ export default function AlunoDetail() {
           setHistoricoFrequencia([]);
         }
 
-        // Carregar intervenções (mock por enquanto - implementar endpoint depois)
-        setIntervencoes([]);
+        // Carregar intervenções do aluno
+        try {
+          const intervencoesData = await api.intervencoes.listByAluno(token, matricula);
+          setIntervencoes(intervencoesData);
+        } catch (intervError) {
+          console.error('Erro ao carregar intervenções:', intervError);
+          setIntervencoes([]);
+        }
 
         // Carregar faltas por disciplina
         try {
@@ -256,8 +269,6 @@ export default function AlunoDetail() {
       </div>
     );
   }
-
-  const riscoColor = getRiscoColor(aluno.predicao_atual?.nivel_risco || NivelRisco.BAIXO);
 
   return (
     <div className="space-y-8">
@@ -396,7 +407,7 @@ export default function AlunoDetail() {
           </InfoCard>
 
           {/* Dados dos Responsáveis */}
-          <InfoCard title="👥 Dados dos Responsáveis" icon={Users}>
+          <InfoCard title=" Dados dos Responsáveis" icon={Users}>
             <div className="space-y-4">
               {/* 1º Responsável */}
               <div className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl">
@@ -428,7 +439,7 @@ export default function AlunoDetail() {
           </InfoCard>
 
           {/* Histórico de Frequência */}
-          <InfoCard title="📊 Histórico de Frequência" icon={Calendar}>
+          <InfoCard title="Histórico de Frequência" icon={Calendar}>
             {historicoFrequencia.length === 0 ? (
               // SEM DADOS - Mostra aviso completo
               <div className="space-y-4">
@@ -587,7 +598,7 @@ export default function AlunoDetail() {
           </InfoCard>
 
           {/* Faltas por Disciplina */}
-          <InfoCard title="📚 Faltas por Disciplina" icon={BookOpen}>
+          <InfoCard title="Faltas por Disciplina" icon={BookOpen}>
             {faltasPorDisciplina.length === 0 ? (
               <div className="p-8 text-center text-gray-500 dark:text-slate-400">
                 <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -636,6 +647,61 @@ export default function AlunoDetail() {
                             Última: {new Date(faltas.ultima_falta).toLocaleDateString('pt-BR')}
                           </span>
                         )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </InfoCard>
+
+          {/* Intervenções */}
+          <InfoCard title="Intervenções" icon={ClipboardList}>
+            {intervencoes.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-slate-500">
+                Nenhuma intervenção registrada para este aluno.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500 dark:text-slate-400">
+                  {intervencoes.length} intervenção(ões) registrada(s)
+                </p>
+                {intervencoes.map((interv) => {
+                  const statusStyles: Record<string, string> = {
+                    CONCLUIDA: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
+                    EM_ANDAMENTO: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
+                    PENDENTE: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+                    CANCELADA: 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300',
+                    RASCUNHO: 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300',
+                  };
+                  const prioridadeStyles: Record<string, string> = {
+                    URGENTE: 'text-red-600 dark:text-red-400',
+                    ALTA: 'text-orange-600 dark:text-orange-400',
+                    MEDIA: 'text-amber-600 dark:text-amber-400',
+                    BAIXA: 'text-gray-500 dark:text-slate-400',
+                  };
+                  return (
+                    <div key={interv.id} className="p-3 bg-gray-50 dark:bg-slate-800/50 rounded-xl">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{interv.tipo}</span>
+                        <span className={cn(
+                          'text-xs font-bold px-2 py-0.5 rounded-full',
+                          statusStyles[interv.status] || statusStyles.PENDENTE
+                        )}>
+                          {interv.status}
+                        </span>
+                      </div>
+                      {interv.descricao && (
+                        <p className="text-xs text-gray-600 dark:text-slate-400 mb-1">{interv.descricao}</p>
+                      )}
+                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-500">
+                        <span className={cn('font-semibold', prioridadeStyles[interv.prioridade])}>
+                          Prioridade: {interv.prioridade}
+                        </span>
+                        <span>
+                          {new Date(interv.data_intervencao).toLocaleDateString('pt-BR')}
+                          {interv.auto_gerada ? ' · auto' : ''}
+                        </span>
                       </div>
                     </div>
                   );
@@ -763,15 +829,6 @@ function InfoItem({ label, value, icon: Icon }: {
         <span className="text-sm font-semibold text-gray-900 dark:text-white">{value}</span>
       </div>
     </div>
-  );
-}
-
-// Ícone de Email (adicionei aqui pois não estava importado)
-function Mail({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
   );
 }
 

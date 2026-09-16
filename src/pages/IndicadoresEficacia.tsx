@@ -9,16 +9,13 @@
  * 4. Impacto das intervenções
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  TrendingUp, 
   CheckCircle, 
   AlertCircle, 
-  Users, 
   Target,
   Award,
   ArrowUpRight,
-  ArrowDownRight,
   Activity,
   Shield,
   Heart
@@ -96,11 +93,7 @@ export default function IndicadoresEficacia() {
   const [isLoading, setIsLoading] = useState(true);
   const [periodo, setPeriodo] = useState<'6m' | '1a' | '2a'>('6m');
 
-  useEffect(() => {
-    loadIndicadores();
-  }, [periodo]);
-
-  const loadIndicadores = async () => {
+  const loadIndicadores = useCallback(async () => {
     if (!token) return;
     
     setIsLoading(true);
@@ -137,16 +130,20 @@ export default function IndicadoresEficacia() {
       } else {
         throw new Error('Erro ao carregar indicadores');
       }
-    } catch (error: any) {
+    } catch (error) {
       addToast({
         type: 'error',
         title: 'Erro ao carregar',
-        message: error.message
+        message: error instanceof Error ? error.message : 'Erro ao carregar indicadores'
       });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, periodo, addToast]);
+
+  useEffect(() => {
+    loadIndicadores();
+  }, [loadIndicadores]);
 
   // Dados para gráfico de impacto por tipo
   const impactoChartData = data?.impacto_intervencoes.por_tipo.map(t => ({
@@ -465,7 +462,7 @@ export default function IndicadoresEficacia() {
                     return (
                       <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg">
                         <p className="font-bold text-white text-sm mb-2">{label}</p>
-                        {payload.map((entry: any, index: number) => (
+                        {payload.map((entry, index) => (
                           <p key={index} className="text-sm font-medium text-slate-300">
                             {entry.name}: <span className="text-white font-bold">{entry.value}</span>
                           </p>

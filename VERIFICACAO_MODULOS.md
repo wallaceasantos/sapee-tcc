@@ -56,6 +56,12 @@
 - **Endpoints:**
   - POST /tokens/questionario/gerar
   - GET /tokens/questionario/listar
+  - POST /tokens/questionario/enviar
+  - POST /tokens/questionario/enviar-em-massa
+- **Envio de WhatsApp real:**
+  - Configurar `WHATSAPP_CALLMEBOT_API_KEY` no `.env`
+  - Funciona SEM conta de desenvolvedor da Meta
+  - Também suporta links `wa.me` para envio manual
 
 ### **6. Egressos**
 - **URL:** http://localhost:3000/egressos

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { logAction } from './logService';
 import { api } from './api';
+import { storage } from '../utils/storage';
 
 // Tipos de Roles
 export type Role = 'ADMIN' | 'COORDENADOR' | 'PEDAGOGO' | 'DIRETOR' | 'PROFESSOR';
@@ -54,10 +55,11 @@ interface AuthContextType {
   can: (recurso: string, acao?: string) => boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Verificar se já tem usuário logado ao carregar
@@ -65,33 +67,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     const loadUser = async () => {
-      const storedUser = localStorage.getItem('sapee_user');
-      const token = localStorage.getItem('sapee_token');
+      const storedUser = storage.user.get();
+      const storedToken = storage.token.get();
 
       // Limpar dados antigos corrompidos (role como objeto)
-      if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser);
-          if (parsed.role && typeof parsed.role === 'object') {
-            console.log('🧹 Removendo dados antigos corrompidos do localStorage...');
-            localStorage.removeItem('sapee_user');
-            localStorage.removeItem('sapee_token');
-            localStorage.removeItem('sapee_refresh_token');
+      if (storedUser && typeof (storedUser as any).role === 'object') {
+            storage.clearAll();
             if (isMounted) {
               setIsLoading(false);
             }
             return;
           }
-        } catch {
-          // Ignora erro de parse
-        }
-      }
 
-      if (storedUser && token) {
+      if (storedUser && storedToken) {
         try {
           // Validar token com backend
           try {
-            const userData: UserApiResponse = await api.auth.me(token);
+            const userData: UserApiResponse = await api.auth.me(storedToken);
 
             // Extrair role - pode vir como string ou objeto ou undefined
             let roleName: string;
@@ -124,22 +116,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ativo: userData.ativo,
               };
               setUser(normalizedUser);
-              // Atualizar localStorage com dados normalizados
-              localStorage.setItem('sapee_user', JSON.stringify(normalizedUser));
-              setToken(token);
+              storage.user.set(normalizedUser);
+              setToken(storedToken);
               setIsLoading(false);
               return;
             }
           } catch (error) {
             console.error('Token inválido, limpando dados...', error);
-            // Token inválido, limpar dados
-            localStorage.removeItem('sapee_user');
-            localStorage.removeItem('sapee_token');
-            localStorage.removeItem('sapee_refresh_token');
+            storage.user.clear();
+            storage.token.clear();
+            storage.refreshToken.clear();
           }
         } catch (error) {
           console.error('Erro ao carregar usuário:', error);
-          localStorage.removeItem('sapee_user');
+          storage.user.clear();
         }
       }
       // Sempre definir isLoading como false se não houver usuário válido
@@ -156,16 +146,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const [token, setToken] = useState<string | null>(null);
-
   const login = async (email: string, senha: string): Promise<boolean> => {
     try {
       // Login com API real
       const response = await api.auth.login({ email, senha });
       
       // Armazenar token
-      localStorage.setItem('sapee_token', response.access_token);
-      localStorage.setItem('sapee_refresh_token', response.refresh_token);
+      storage.token.set(response.access_token);
+      storage.refreshToken.set(response.refresh_token);
       setToken(response.access_token);
 
       // Obter dados do usuário
@@ -209,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       setUser(userToSave);
-      localStorage.setItem('sapee_user', JSON.stringify(userToSave));
+      storage.user.set(userToSave);
       
       // Log de sucesso
       logAction('Login', `Usuário realizou acesso ao sistema: ${email}`);
@@ -228,9 +216,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     setToken(null);
-    localStorage.removeItem('sapee_user');
-    localStorage.removeItem('sapee_token');
-    localStorage.removeItem('sapee_refresh_token');
+    storage.user.clear();
+    storage.token.clear();
+    storage.refreshToken.clear();
     window.location.href = '/login';
   };
 

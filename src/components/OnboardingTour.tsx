@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { storage } from '../utils/storage';
 
 interface Step {
   title: string;
@@ -32,7 +33,7 @@ export default function OnboardingTour({ steps, isRunning, onFinish, onClose }: 
 
   const handleFinish = () => {
     if (skipNextTime) {
-        localStorage.setItem('sapee_skip_tour', 'true');
+        storage.skipTour.set(true);
     }
     onFinish();
   };

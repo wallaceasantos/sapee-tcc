@@ -1,0 +1,67 @@
+{
+  "pesos_fatores": {
+    "score_base": 5,
+    "frequencia_baixa_60": 30,
+    "frequencia_baixa_75": 22,
+    "frequencia_baixa_85": 10,
+    "media_critica_4": 28,
+    "media_baixa_5": 20,
+    "media_baixa_6": 12,
+    "reprovas_muitas_3": 16,
+    "reprovas_algumas_1": 12,
+    "renda_muito_baixa_1000": 8,
+    "renda_baixa_1500": 5,
+    "trabalho_tempo_integral_40": 12,
+    "trabalho_meio_periodo_20": 8,
+    "trabalho_parcial": 2,
+    "deslocamento_critico_120": 0,
+    "deslocamento_elevado_60": 0,
+    "acesso_muito_dificil": 10,
+    "acesso_dificil": 2,
+    "sem_computador": 0,
+    "sem_internet": 0,
+    "bolsa_familia": 0,
+    "primeira_geracao": 0,
+    "frequencia_excelente_90": -18,
+    "frequencia_boa_85": -6,
+    "media_excelente_8": -14,
+    "media_boa_7": -6,
+    "sem_reprovas": -6,
+    "renda_alta_3000": -2,
+    "nao_trabalha": -4,
+    "psicossocial_intencao_evasao_alta": 18,
+    "psicossocial_intencao_evasao_media": 10,
+    "psicossocial_saude_mental_critica": 15,
+    "psicossocial_saude_mental_ruim": 10,
+    "psicossocial_integracao_baixa": 8,
+    "psicossocial_conflitos_altos": 8,
+    "psicossocial_satisfacao_baixa": 8,
+    "queda_frequencia_brusca": 18,
+    "queda_frequencia_suave": 10,
+    "melhora_frequencia": -8,
+    "queda_media_brusca": 18,
+    "queda_media_suave": 10,
+    "melhora_media": -8
+  },
+  "combinacoes_perigosas": {
+    "frequencia_baixa_e_trabalha": 1.2,
+    "media_baixa_e_reprovas": 1.2,
+    "trabalha_e_deslocamento_longo": 1.1,
+    "vulnerabilidade_multipla": 1.1,
+    "queda_dupla": 1.25
+  },
+  "limiares_risco": {
+    "baixo_max": 8,
+    "medio_max": 17,
+    "alto_max": 90
+  },
+  "score_normalizacao": {
+    "raw_cap": 150
+  },
+  "score_compression": {
+    "threshold_1": 70,
+    "factor_1": 0.6,
+    "threshold_2": 85,
+    "factor_2": 0.5
+  }
+}

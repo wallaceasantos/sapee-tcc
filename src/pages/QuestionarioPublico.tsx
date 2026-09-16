@@ -7,7 +7,7 @@
  * Uso: http://localhost:5173/questionario-publico?token=abc123
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import * as questionarioApi from '../services/questionarioApi';
@@ -35,25 +35,15 @@ export const QuestionarioPublico: React.FC = () => {
   const [enviando, setEnviando] = useState(false);
   const [tokenValido, setTokenValido] = useState(false);
   const [resultado, setResultado] = useState<{score_total: number, nivel_risco: string} | null>(null);
-  const [tempoInicio, setTempoInicio] = useState<number>(Date.now());
+  const [tempoInicio] = useState<number>(Date.now());
   const [blocoAtual, setBlocoAtual] = useState(0);
   const [erroMensagem, setErroMensagem] = useState<string>('');
   const [sidebarColapsada, setSidebarColapsada] = useState(false);
 
-  // Validar token ao montar
-  useEffect(() => {
-    if (!token) {
-      setErroMensagem('Token não fornecido. Peça ao coordenador um link de acesso.');
-      setCarregando(false);
-      return;
-    }
-    validarToken(token);
-  }, [token]);
-
-  const validarToken = async (token: string) => {
+  const validarToken = useCallback(async (token: string) => {
     try {
       setCarregando(true);
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_URL}/tokens/questionario/validar`, {
         method: 'POST',
         headers: {
@@ -76,7 +66,22 @@ export const QuestionarioPublico: React.FC = () => {
     } finally {
       setCarregando(false);
     }
-  };
+  }, []);
+
+  // Validar token ao montar
+  useEffect(() => {
+    if (!token) {
+      setErroMensagem('Token não fornecido. Peça ao coordenador um link de acesso.');
+      setCarregando(false);
+      return;
+    }
+    validarToken(token);
+  }, [token, validarToken]);
+
+  // Scroll para o topo sempre que mudar de bloco
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [blocoAtual]);
 
   // Carregar perguntas
   const carregarPerguntas = async () => {
@@ -152,7 +157,7 @@ export const QuestionarioPublico: React.FC = () => {
       };
 
       // Enviar
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_URL}/questionario-publico/responder?token=${token}`, {
         method: 'POST',
         headers: {
@@ -169,9 +174,10 @@ export const QuestionarioPublico: React.FC = () => {
       const resultado = await response.json();
       setResultado(resultado);
 
-    } catch (erro: any) {
+    } catch (erro: unknown) {
       console.error('Erro ao enviar questionário:', erro);
-      alert(erro.message || 'Erro ao enviar questionário. Tente novamente.');
+      const mensagem = erro instanceof Error ? erro.message : 'Erro ao enviar questionário. Tente novamente.';
+      alert(mensagem);
     } finally {
       setEnviando(false);
     }

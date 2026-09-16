@@ -1,6 +1,7 @@
 """
 Script para testar criação de intervenção
 """
+
 import requests
 import json
 
@@ -12,10 +13,7 @@ MATRICULA = "2024101001"
 
 # Login
 print("📝 Fazendo login...")
-login_response = requests.post(f"{BASE_URL}/auth/login", json={
-    "email": EMAIL,
-    "senha": SENHA
-})
+login_response = requests.post(f"{BASE_URL}/auth/login", json={"email": EMAIL, "senha": SENHA})
 
 if login_response.status_code != 200:
     print(f"❌ Erro no login: {login_response.status_code}")
@@ -26,24 +24,17 @@ print("✅ Login realizado com sucesso!")
 
 # Criar intervenção
 print("\n📝 Criando intervenção...")
-headers = {
-    "Authorization": f"Bearer {token}",
-    "Content-Type": "application/json"
-}
+headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 data = {
     "tipo": "Reunião com Aluno",
     "descricao": "Teste de intervenção via script",
     "status": "PENDENTE",
     "prioridade": "MEDIA",
-    "data_intervencao": "2026-03-13"
+    "data_intervencao": "2026-03-13",
 }
 
-response = requests.post(
-    f"{BASE_URL}/alunos/{MATRICULA}/intervencoes",
-    headers=headers,
-    json=data
-)
+response = requests.post(f"{BASE_URL}/alunos/{MATRICULA}/intervencoes", headers=headers, json=data)
 
 print(f"Status: {response.status_code}")
 

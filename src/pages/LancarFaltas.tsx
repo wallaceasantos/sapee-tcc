@@ -9,7 +9,7 @@
  * - Filtro por data e disciplina
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Calendar, CheckCircle, XCircle, AlertTriangle, Save, Search, X, Users, ListChecks, FileText, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
@@ -55,6 +55,15 @@ interface HistoricoFaltasAluno {
   faltasDisciplina: Record<string, number>;
   ultimasFaltas: string[];
   nivelAlerta: 'BAIXO' | 'MEDIO' | 'ALTO' | 'CRITICO';
+}
+
+interface FaltaDisciplina {
+  disciplina: string;
+  total_faltas: number;
+}
+
+interface Falta {
+  data: string;
 }
 
 type ModoLancamento = 'individual' | 'lote';
@@ -103,19 +112,14 @@ export default function LancarFaltas() {
   // CARREGAR ALUNOS E DISCIPLINAS
   // ============================================
 
-  useEffect(() => {
-    loadAlunos();
-    loadDisciplinas();
-  }, []);
-
-  const loadDisciplinas = async () => {
+  const loadDisciplinas = useCallback(async () => {
     if (!token) return;
 
     setIsLoadingDisciplinas(true);
     try {
       const data = await api.disciplinas.list(token, true);
       setDisciplinas(data);
-    } catch (error: any) {
+    } catch {
       addToast({
         type: 'error',
         title: 'Erro ao carregar',
@@ -124,7 +128,32 @@ export default function LancarFaltas() {
     } finally {
       setIsLoadingDisciplinas(false);
     }
-  };
+  }, [token, addToast]);
+
+  const loadAlunos = useCallback(async () => {
+    if (!token) return;
+
+    setIsLoadingAlunos(true);
+    try {
+      const data = await api.alunos.list(token, 0, 1000);
+      setAlunos(data);
+      setAlunosFiltrados(data.slice(0, 50));
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao carregar alunos';
+      addToast({
+        type: 'error',
+        title: 'Erro ao carregar',
+        message: mensagem
+      });
+    } finally {
+      setIsLoadingAlunos(false);
+    }
+  }, [token, addToast]);
+
+  useEffect(() => {
+    loadAlunos();
+    loadDisciplinas();
+  }, [loadAlunos, loadDisciplinas]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -149,24 +178,7 @@ export default function LancarFaltas() {
     }
   }, [busca, alunos]);
 
-  const loadAlunos = async () => {
-    if (!token) return;
 
-    setIsLoadingAlunos(true);
-    try {
-      const data = await api.alunos.list(token, 0, 1000);
-      setAlunos(data);
-      setAlunosFiltrados(data.slice(0, 50));
-    } catch (error: any) {
-      addToast({
-        type: 'error',
-        title: 'Erro ao carregar',
-        message: error.message
-      });
-    } finally {
-      setIsLoadingAlunos(false);
-    }
-  };
 
   // ============================================
   // MODO INDIVIDUAL
@@ -243,11 +255,12 @@ export default function LancarFaltas() {
       setBusca('');
       setDisciplinaId('');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao registrar falta';
       addToast({
         type: 'error',
         title: 'Erro ao registrar',
-        message: error.message || 'Erro ao registrar falta'
+        message: mensagem
       });
     } finally {
       setIsSaving(false);
@@ -317,12 +330,12 @@ export default function LancarFaltas() {
             }
           );
 
-          let faltasDisciplina: Record<string, number> = {};
+          const faltasDisciplina: Record<string, number> = {};
           let totalFaltas = 0;
 
           if (responseDisciplina.ok) {
             const dados = await responseDisciplina.json();
-            dados.forEach((item: any) => {
+            dados.forEach((item: FaltaDisciplina) => {
               faltasDisciplina[item.disciplina] = item.total_faltas;
               totalFaltas += item.total_faltas;
             });
@@ -341,9 +354,9 @@ export default function LancarFaltas() {
           if (responseFaltas.ok) {
             const faltas = await responseFaltas.json();
             ultimasFaltas = faltas
-              .sort((a: any, b: any) => new Date(b.data).getTime() - new Date(a.data).getTime())
+              .sort((a: Falta, b: Falta) => new Date(b.data).getTime() - new Date(a.data).getTime())
               .slice(0, 5)
-              .map((f: any) => f.data);
+              .map((f: Falta) => f.data);
           }
 
           // Calcular nível de alerta
@@ -388,14 +401,6 @@ export default function LancarFaltas() {
         return { ...item, presente: true, justificada: false, motivo: '' };
       }
     }));
-  };
-
-  const toggleJustificativa = (matricula: string) => {
-    setListaPresenca(prev => prev.map(item =>
-      item.aluno.matricula === matricula
-        ? { ...item, justificada: !item.justificada, motivo: '' }
-        : item
-    ));
   };
 
   const salvarListaPresenca = async () => {
@@ -476,11 +481,12 @@ export default function LancarFaltas() {
       setDisciplinaId('');
       setHistoricoFaltas([]);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao salvar lista de presença';
       addToast({
         type: 'error',
         title: 'Erro ao salvar',
-        message: error.message || 'Erro ao salvar lista de presença'
+        message: mensagem
       });
     } finally {
       setIsSaving(false);

@@ -10,7 +10,7 @@
  * - Notas por disciplina
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, AlertCircle, Calendar, HelpCircle, AlertTriangle, BookOpen, Users, ChevronDown, ChevronRight, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
@@ -21,7 +21,7 @@ interface EventoJornada {
   tipo: string;
   data: string | null;
   titulo: string;
-  detalhes: Record<string, any>;
+  detalhes: Record<string, unknown>;
   cor: string;
   icone: string;
 }
@@ -68,17 +68,13 @@ function formatDateBR(dateStr: string | null): string {
   }
 }
 
-export default function TimelineJornada({ matricula, className }: TimelineJornadaProps) {
+export default function TimelineJornada({ matricula }: TimelineJornadaProps) {
   const { token } = useAuth();
   const [jornada, setJornada] = useState<JornadaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    loadJornada();
-  }, [matricula, token]);
-
-  const loadJornada = async () => {
+  const loadJornada = useCallback(async () => {
     if (!token || !matricula) return;
     setLoading(true);
     try {
@@ -89,7 +85,11 @@ export default function TimelineJornada({ matricula, className }: TimelineJornad
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, matricula]);
+
+  useEffect(() => {
+    loadJornada();
+  }, [loadJornada]);
 
   const toggleExpand = (index: number) => {
     setExpandedIds(prev => {
@@ -105,15 +105,16 @@ export default function TimelineJornada({ matricula, className }: TimelineJornad
 
   const formatarDetalhes = (evento: EventoJornada): React.ReactNode => {
     const { detalhes, tipo } = evento;
+    const d = detalhes as Record<string, string | number | boolean | undefined>;
 
     switch (tipo) {
       case 'PREDICAO':
         return (
           <div className="space-y-1 text-sm">
-            <p><span className="font-medium">Risco de Evasão:</span> {(detalhes.risco_evasao || 0).toFixed(1)}%</p>
-            <p><span className="font-medium">Nível:</span> {detalhes.nivel_risco}</p>
-            {detalhes.fatores_principais && (
-              <p><span className="font-medium">Fatores:</span> {detalhes.fatores_principais}</p>
+            <p><span className="font-medium">Risco de Evasão:</span> {Number(d.risco_evasao || 0).toFixed(1)}%</p>
+            <p><span className="font-medium">Nível:</span> {d.nivel_risco}</p>
+            {d.fatores_principais && (
+              <p><span className="font-medium">Fatores:</span> {d.fatores_principais}</p>
             )}
           </div>
         );
@@ -121,30 +122,30 @@ export default function TimelineJornada({ matricula, className }: TimelineJornad
       case 'INTERVENCAO':
         return (
           <div className="space-y-1 text-sm">
-            <p><span className="font-medium">Tipo:</span> {detalhes.tipo}</p>
-            {detalhes.descricao && <p><span className="font-medium">Descrição:</span> {detalhes.descricao}</p>}
-            <p><span className="font-medium">Status:</span> {detalhes.status}</p>
-            {detalhes.prioridade && <p><span className="font-medium">Prioridade:</span> {detalhes.prioridade}</p>}
-            {detalhes.observacoes && <p><span className="font-medium">Observações:</span> {detalhes.observacoes}</p>}
+            <p><span className="font-medium">Tipo:</span> {d.tipo}</p>
+            {d.descricao && <p><span className="font-medium">Descrição:</span> {d.descricao}</p>}
+            <p><span className="font-medium">Status:</span> {d.status}</p>
+            {d.prioridade && <p><span className="font-medium">Prioridade:</span> {d.prioridade}</p>}
+            {d.observacoes && <p><span className="font-medium">Observações:</span> {d.observacoes}</p>}
           </div>
         );
 
       case 'FREQUENCIA':
         return (
           <div className="space-y-1 text-sm">
-            <p><span className="font-medium">Mês:</span> {detalhes.mes}</p>
-            <p><span className="font-medium">Frequência:</span> {detalhes.frequencia}%</p>
-            <p><span className="font-medium">Faltas justificadas:</span> {detalhes.faltas_justificadas}</p>
-            <p><span className="font-medium">Faltas não justificadas:</span> {detalhes.faltas_nao_justificadas}</p>
+            <p><span className="font-medium">Mês:</span> {d.mes}</p>
+            <p><span className="font-medium">Frequência:</span> {d.frequencia}%</p>
+            <p><span className="font-medium">Faltas justificadas:</span> {d.faltas_justificadas}</p>
+            <p><span className="font-medium">Faltas não justificadas:</span> {d.faltas_nao_justificadas}</p>
           </div>
         );
 
       case 'QUESTIONARIO':
         return (
           <div className="space-y-1 text-sm">
-            <p><span className="font-medium">Score Total:</span> {detalhes.score_total}</p>
-            {detalhes.fator_critico && (
-              <p><span className="font-medium">Fator Crítico:</span> {detalhes.fator_critico}</p>
+            <p><span className="font-medium">Score Total:</span> {d.score_total}</p>
+            {d.fator_critico && (
+              <p><span className="font-medium">Fator Crítico:</span> {d.fator_critico}</p>
             )}
           </div>
         );
@@ -152,11 +153,11 @@ export default function TimelineJornada({ matricula, className }: TimelineJornad
       case 'ALERTA_FALTAS':
         return (
           <div className="space-y-1 text-sm">
-            <p><span className="font-medium">Tipo:</span> {detalhes.tipo_alerta}</p>
-            <p><span className="font-medium">Faltas:</span> {detalhes.quantidade_faltas}</p>
-            <p><span className="font-medium">Status:</span> {detalhes.status}</p>
-            {detalhes.disciplinas_afetadas && (
-              <p><span className="font-medium">Disciplinas:</span> {detalhes.disciplinas_afetadas}</p>
+            <p><span className="font-medium">Tipo:</span> {d.tipo_alerta}</p>
+            <p><span className="font-medium">Faltas:</span> {d.quantidade_faltas}</p>
+            <p><span className="font-medium">Status:</span> {d.status}</p>
+            {d.disciplinas_afetadas && (
+              <p><span className="font-medium">Disciplinas:</span> {d.disciplinas_afetadas}</p>
             )}
           </div>
         );
@@ -164,12 +165,12 @@ export default function TimelineJornada({ matricula, className }: TimelineJornad
       case 'NOTA':
         return (
           <div className="space-y-1 text-sm">
-            <p><span className="font-medium">Disciplina:</span> {detalhes.disciplina}</p>
-            <p><span className="font-medium">Nota:</span> {detalhes.nota}</p>
-            <p><span className="font-medium">Bimestre:</span> {detalhes.bimestre}º</p>
-            <p><span className="font-medium">Situação:</span> {detalhes.situacao}</p>
-            {detalhes.faltas_disciplina > 0 && (
-              <p><span className="font-medium">Faltas na disciplina:</span> {detalhes.faltas_disciplina}</p>
+            <p><span className="font-medium">Disciplina:</span> {d.disciplina}</p>
+            <p><span className="font-medium">Nota:</span> {d.nota}</p>
+            <p><span className="font-medium">Bimestre:</span> {d.bimestre}º</p>
+            <p><span className="font-medium">Situação:</span> {d.situacao}</p>
+            {Number(d.faltas_disciplina || 0) > 0 && (
+              <p><span className="font-medium">Faltas na disciplina:</span> {d.faltas_disciplina}</p>
             )}
           </div>
         );
@@ -177,16 +178,16 @@ export default function TimelineJornada({ matricula, className }: TimelineJornad
       case 'ATENDIMENTO':
         return (
           <div className="space-y-1 text-sm">
-            <p><span className="font-medium">Tipo:</span> {detalhes.tipo}</p>
-            <p><span className="font-medium">Status:</span> {detalhes.status}</p>
-            <p><span className="font-medium">Descrição:</span> {detalhes.descricao}</p>
-            {detalhes.local && <p><span className="font-medium">Local:</span> {detalhes.local}</p>}
-            {detalhes.observacoes && <p><span className="font-medium">Observações:</span> {detalhes.observacoes}</p>}
-            {detalhes.prioridade && <p><span className="font-medium">Prioridade:</span> {detalhes.prioridade}</p>}
-            {detalhes.necessita_encaminhamento && (
+            <p><span className="font-medium">Tipo:</span> {d.tipo}</p>
+            <p><span className="font-medium">Status:</span> {d.status}</p>
+            <p><span className="font-medium">Descrição:</span> {d.descricao}</p>
+            {d.local && <p><span className="font-medium">Local:</span> {d.local}</p>}
+            {d.observacoes && <p><span className="font-medium">Observações:</span> {d.observacoes}</p>}
+            {d.prioridade && <p><span className="font-medium">Prioridade:</span> {d.prioridade}</p>}
+            {d.necessita_encaminhamento && (
               <p className="text-amber-600 dark:text-amber-400"><span className="font-medium">⚠️ Necessita encaminhamento</span></p>
             )}
-            {detalhes.necessita_followup && (
+            {d.necessita_followup && (
               <p className="text-blue-600 dark:text-blue-400"><span className="font-medium">📋 Necessita follow-up</span></p>
             )}
           </div>

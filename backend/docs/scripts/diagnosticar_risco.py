@@ -30,13 +30,13 @@ print("=" * 80)
 with Session(engine) as db:
     # Buscar 10 primeiros alunos
     alunos = db.query(models.Aluno).limit(10).all()
-    
+
     print(f"\n📊 Analisando {len(alunos)} alunos...\n")
-    
+
     for aluno in alunos:
         # Calcular risco
         resultado = fallback_logic(aluno, db=db)
-        
+
         print(f"👤 {aluno.matricula} - {aluno.nome}")
         print(f"   📊 Curso: {aluno.curso.nome if aluno.curso else 'N/A'}")
         print(f"   📈 Frequência: {aluno.frequencia}%")
@@ -49,9 +49,11 @@ with Session(engine) as db:
         print(f"   🚌 Tempo deslocamento: {aluno.tempo_deslocamento} min")
         print(f"   💻 Computador: {'Sim' if aluno.possui_computador else 'Não'}")
         print(f"   🌐 Internet: {'Sim' if aluno.possui_internet else 'Não'}")
-        print(f"\n   🎯 RISCO CALCULADO: {resultado['risco_evasao']:.1f}% - {resultado['nivel_risco']}")
+        print(
+            f"\n   🎯 RISCO CALCULADO: {resultado['risco_evasao']:.1f}% - {resultado['nivel_risco']}"
+        )
         print(f"   📋 Fatores:")
-        for fator in resultado['fatores_principais'].split(', '):
+        for fator in resultado["fatores_principais"].split(", "):
             print(f"      • {fator}")
         print()
         print("-" * 80)

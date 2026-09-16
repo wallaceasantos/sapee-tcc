@@ -2,9 +2,9 @@
  * Modal de Edição Rápida de Aluno
  * Permite editar dados essenciais sem sair da lista
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Save, User, GraduationCap, Mail, Phone, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Save, User, GraduationCap, Mail, Phone, AlertCircle } from 'lucide-react';
 import { cn } from '../utils';
 import { useToast } from './ui/Toast';
 import api from '../services/api';
@@ -51,12 +51,28 @@ export function EdicaoRapidaModal({ isOpen, onClose, aluno, onSuccess, token }: 
     frequencia: '',
   });
 
+  const carregarCursos = useCallback(async () => {
+    try {
+      // Buscar alunos para extrair cursos únicos
+      const alunos = await api.alunos.list(token, 0, 1000);
+      const cursosUnicos = new Map<number, { id: number; nome: string }>();
+      alunos.forEach((a: Aluno) => {
+        if (a.curso) {
+          cursosUnicos.set(a.curso.id, a.curso);
+        }
+      });
+      setCursos(Array.from(cursosUnicos.values()));
+    } catch (error) {
+      console.error('Erro ao carregar cursos:', error);
+    }
+  }, [token]);
+
   // Carregar cursos ao abrir
   useEffect(() => {
     if (isOpen) {
       carregarCursos();
     }
-  }, [isOpen]);
+  }, [isOpen, carregarCursos]);
 
   // Preencher formulário quando aluno muda
   useEffect(() => {
@@ -73,22 +89,6 @@ export function EdicaoRapidaModal({ isOpen, onClose, aluno, onSuccess, token }: 
       });
     }
   }, [aluno]);
-
-  const carregarCursos = async () => {
-    try {
-      // Buscar alunos para extrair cursos únicos
-      const alunos = await api.alunos.list(token, 0, 1000);
-      const cursosUnicos = new Map();
-      alunos.forEach((a: any) => {
-        if (a.curso) {
-          cursosUnicos.set(a.curso.id, a.curso);
-        }
-      });
-      setCursos(Array.from(cursosUnicos.values()));
-    } catch (error) {
-      console.error('Erro ao carregar cursos:', error);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,12 +117,13 @@ export function EdicaoRapidaModal({ isOpen, onClose, aluno, onSuccess, token }: 
 
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao atualizar aluno:', error);
+      const message = error instanceof Error ? error.message : 'Não foi possível atualizar os dados.';
       addToast({
         type: 'error',
         title: 'Erro ao salvar',
-        message: error.message || 'Não foi possível atualizar os dados.',
+        message,
       });
     } finally {
       setIsLoading(false);

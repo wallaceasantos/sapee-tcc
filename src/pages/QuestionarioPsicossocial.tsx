@@ -15,11 +15,8 @@ import {
 import TermoConsentimento from '../components/Questionario/TermoConsentimento';
 import BarraProgresso from '../components/Questionario/BarraProgresso';
 import BlocoTemas from '../components/Questionario/BlocoTemas';
-import { useAuth } from '../services/AuthContext';
-
 export const QuestionarioPsicossocial: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   // Estados
   const [blocos, setBlocos] = useState<BlocoTematico[]>([]);
@@ -29,7 +26,7 @@ export const QuestionarioPsicossocial: React.FC = () => {
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<QuestionarioResponse | null>(null);
-  const [tempoInicio, setTempoInicio] = useState<number>(Date.now());
+  const [tempoInicio] = useState<number>(Date.now());
   const [blocoAtual, setBlocoAtual] = useState(0);
 
   // Carregar perguntas ao montar
@@ -118,9 +115,10 @@ export const QuestionarioPsicossocial: React.FC = () => {
         alert('Questionário respondido com sucesso!');
         navigate('/dashboard');
       }, 2000);
-    } catch (erro: any) {
+    } catch (erro: unknown) {
       console.error('Erro ao enviar questionário:', erro);
-      alert(erro.response?.data?.detail || 'Erro ao enviar questionário. Tente novamente.');
+      const mensagem = erro instanceof Error ? erro.message : 'Erro ao enviar questionário. Tente novamente.';
+      alert(mensagem);
     } finally {
       setEnviando(false);
     }

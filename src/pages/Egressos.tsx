@@ -3,7 +3,7 @@
  * SAPEE DEWAS - Acompanhamento de ex-alunos
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../components/ui/Toast';
 
 interface Egresso {
@@ -43,14 +43,10 @@ export const Egressos: React.FC = () => {
     motivo_abandono_principal: 'FINANCEIRO',
   });
 
-  useEffect(() => {
-    carregarEgressos();
-  }, []);
-
-  const carregarEgressos = async () => {
+  const carregarEgressos = useCallback(async () => {
     try {
       setCarregando(true);
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || '';
 
       // Carregar egressos
       const response = await fetch(`${API_URL}/egressos`, {
@@ -74,7 +70,11 @@ export const Egressos: React.FC = () => {
     } finally {
       setCarregando(false);
     }
-  };
+  }, [addToast]);
+
+  useEffect(() => {
+    carregarEgressos();
+  }, [carregarEgressos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +105,7 @@ export const Egressos: React.FC = () => {
         const error = await response.json();
         alert(error.detail || 'Erro ao cadastrar');
       }
-    } catch (erro) {
+    } catch {
       alert('Erro ao cadastrar egresso');
     }
   };

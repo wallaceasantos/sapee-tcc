@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './services/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -10,9 +10,6 @@ import Alunos from './pages/Alunos';
 import AlunoDetail from './pages/AlunoDetail';
 import CadastroAlunos from './pages/CadastroAlunos';
 import ImportarDados from './pages/ImportarDados';
-import Relatorios from './pages/Relatorios';
-import RelatorioEficacia from './pages/RelatorioEficacia';
-import RelatoriosGerenciais from './pages/RelatoriosGerenciais';
 import CentralRelatorios from './pages/CentralRelatorios';
 import AuditLogs from './pages/AuditLogs';
 import Usuarios from './pages/Usuarios';
@@ -30,12 +27,17 @@ import PlanosAcao from './pages/PlanosAcao';
 import LancarFaltas from './pages/LancarFaltas';
 import AlertasFaltas from './pages/AlertasFaltas';
 import Disciplinas from './pages/Disciplinas';
+import Cursos from './pages/Cursos';
 import QuestionarioPsicossocial from './pages/QuestionarioPsicossocial';
 import QuestionarioPublico from './pages/QuestionarioPublico';
 import GestaoTokens from './pages/GestaoTokens';
 import Egressos from './pages/Egressos';
 import DashboardQuestionario from './pages/DashboardQuestionario';
 import NotasDisciplina from './pages/NotasDisciplina';
+import LancarFrequencia from './pages/LancarFrequencia';
+import Relatorios from './pages/Relatorios';
+import RelatorioEficacia from './pages/RelatorioEficacia';
+import RelatoriosGerenciais from './pages/RelatoriosGerenciais';
 
 /**
  * MAPEAMENTO DE ROTAS - Módulo Alunos
@@ -82,10 +84,15 @@ export default function App() {
 
                         <Route path="/faltas" element={<LancarFaltas />} />
                         <Route path="/faltas/alertas" element={<AlertasFaltas />} />
+                        <Route path="/frequencia" element={<LancarFrequencia />} />
                         <Route path="/disciplinas" element={<Disciplinas />} />
+                        <Route path="/cursos" element={<Cursos />} />
                         <Route path="/notas" element={<NotasDisciplina />} />
                         <Route path="/importar" element={<ImportarDados />} />
                         <Route path="/relatorios" element={<CentralRelatorios />} />
+                        <Route path="/relatorios/eficacia" element={<RelatorioEficacia />} />
+                        <Route path="/relatorios/gerenciais" element={<RelatoriosGerenciais />} />
+                        <Route path="/relatorios/geral" element={<Relatorios />} />
                         <Route path="/indicadores-eficacia" element={<IndicadoresEficacia />} />
                         <Route path="/validacao-modelo" element={<ValidacaoModelo />} />
                         <Route path="/atendimentos" element={<Atendimentos />} />

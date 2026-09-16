@@ -9,8 +9,8 @@
  * - Ver resumo acadêmico
  */
 
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Search, Plus, Edit, Trash2, Save, X, AlertTriangle, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BookOpen, Search, Plus, Edit, Trash2, Save, X, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
 import { useToast } from '../components/ui/Toast';
@@ -71,27 +71,23 @@ export default function NotasDisciplina() {
 
   // Estados de disciplinas
   const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
-  const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
 
   // Filtro
   const [filtroPeriodo, setFiltroPeriodo] = useState<string>('todos');
 
-  useEffect(() => {
-    loadDisciplinas();
-  }, []);
-
-  const loadDisciplinas = async () => {
+  const loadDisciplinas = useCallback(async () => {
     if (!token) return;
-    setLoadingDisciplinas(true);
     try {
       const data = await api.disciplinas.list(token, true);
       setDisciplinas(data);
     } catch (error) {
       console.error('Erro ao carregar disciplinas:', error);
-    } finally {
-      setLoadingDisciplinas(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    loadDisciplinas();
+  }, [loadDisciplinas]);
 
   const handleBuscaAluno = async () => {
     if (!buscaAluno.trim() || buscaAluno.length < 2) return;
@@ -101,8 +97,9 @@ export default function NotasDisciplina() {
     try {
       const data = await api.alunos.buscar(token, buscaAluno, 20);
       setAlunosFiltrados(data);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message || 'Erro ao buscar aluno' });
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao buscar aluno';
+      addToast({ type: 'error', title: 'Erro', message: mensagem });
     } finally {
       setLoadingBusca(false);
     }
@@ -122,8 +119,9 @@ export default function NotasDisciplina() {
       const periodo = filtroPeriodo === 'todos' ? undefined : filtroPeriodo;
       const data = await api.notas.list(token, matricula, periodo);
       setNotas(data);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message || 'Erro ao carregar notas' });
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao carregar notas';
+      addToast({ type: 'error', title: 'Erro', message: mensagem });
     } finally {
       setLoadingNotas(false);
     }
@@ -160,8 +158,9 @@ export default function NotasDisciplina() {
 
       resetForm();
       loadNotas(alunoSelecionado.matricula);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message || 'Erro ao salvar nota' });
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao salvar nota';
+      addToast({ type: 'error', title: 'Erro', message: mensagem });
     }
   };
 
@@ -196,8 +195,9 @@ export default function NotasDisciplina() {
       await api.notas.delete(token, alunoSelecionado!.matricula, notaId);
       addToast({ type: 'success', title: 'Excluído', message: 'Nota excluída com sucesso' });
       loadNotas(alunoSelecionado!.matricula);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao excluir nota';
+      addToast({ type: 'error', title: 'Erro', message: mensagem });
     }
   };
 

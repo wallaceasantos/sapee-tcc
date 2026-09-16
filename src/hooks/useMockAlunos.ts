@@ -24,7 +24,7 @@ export function useMockAlunos(options: UseMockAlunosOptions = {}) {
         if (filtros?.busca) {
           const busca = filtros.busca.toLowerCase();
           filtered = filtered.filter(
-            a => a.nome.toLowerCase().includes(busca) || a.id.toLowerCase().includes(busca)
+            a => a.nome.toLowerCase().includes(busca) || (a.id ?? '').toLowerCase().includes(busca)
           );
         }
 

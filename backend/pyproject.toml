@@ -1,0 +1,41 @@
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | venv
+  | migrations
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501", "E712"]  # Line too long (Black cuida); E712 é padrão SQLAlchemy
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Imports não utilizados são comuns em __init__
+"tests/*" = ["E501", "F401", "F811"]
+"migrations/*" = ["E501", "W291", "W293", "I001", "E402"]
+"migrations_sql/*" = ["E722", "E501", "W291", "W293", "I001", "E402"]
+"scripts/*" = ["E722", "E501", "W291", "W293", "I001", "E402"]
+"enviar_alertas_automaticos.py" = ["E722", "E501", "W291", "W293", "I001", "E402"]
+"recalcular_predicoes_correcao.py" = ["E501", "W291", "W293", "I001", "E402"]
+"migrate_*.py" = ["E501", "W291", "W293", "I001", "E402"]
+"update_encaminhamentos.py" = ["E501", "W291", "W293", "I001", "E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["models", "schemas", "auth", "database"]

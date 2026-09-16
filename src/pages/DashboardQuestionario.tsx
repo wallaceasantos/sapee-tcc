@@ -3,31 +3,40 @@
  * SAPEE DEWAS - Sistema de Alerta de Predição de Evasão Escolar
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as questionarioApi from '../services/questionarioApi';
 import { DashboardQuestionarioStats, AlunoSemQuestionario } from '../types/questionario';
 import { useToast } from '../components/ui/Toast';
+
+interface AlunoQueRespondeu {
+  matricula: string;
+  nome: string;
+  curso: string | null;
+  nivel_risco: string;
+  score_total: number;
+  data_resposta: string;
+}
 
 export const DashboardQuestionario: React.FC = () => {
   const { addToast } = useToast();
   const [stats, setStats] = useState<DashboardQuestionarioStats | null>(null);
   const [alunosSem, setAlunosSem] = useState<AlunoSemQuestionario[]>([]);
+  const [alunosResponderam, setAlunosResponderam] = useState<AlunoQueRespondeu[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [mostrarAlunosSem, setMostrarAlunosSem] = useState(false);
+  const [mostrarResponderam, setMostrarResponderam] = useState(true);
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
-
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     try {
       setCarregando(true);
-      const [statsData, alunosSemData] = await Promise.all([
+      const [statsData, alunosSemData, responderamData] = await Promise.all([
         questionarioApi.getDashboardStats(),
         questionarioApi.getAlunosSemResponder(),
+        questionarioApi.getAlunosQueResponderam(),
       ]);
       setStats(statsData);
       setAlunosSem(alunosSemData.alunos);
+      setAlunosResponderam(responderamData.alunos);
     } catch (erro) {
       console.error('Erro ao carregar dados:', erro);
       addToast({
@@ -38,7 +47,11 @@ export const DashboardQuestionario: React.FC = () => {
     } finally {
       setCarregando(false);
     }
-  };
+  }, [addToast]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   if (carregando || !stats) {
     return (
@@ -55,18 +68,46 @@ export const DashboardQuestionario: React.FC = () => {
 
   // Cores para níveis de risco
   const getCorRisco = (nivel: string) => {
-    switch (nivel) {
-      case 'BAIXO':
-        return 'bg-green-500';
-      case 'MEDIO':
-        return 'bg-yellow-500';
-      case 'ALTO':
-        return 'bg-orange-500';
-      case 'MUITO_ALTO':
-        return 'bg-red-500';
-      default:
-        return 'bg-slate-500';
-    }
+    const key = nivel.toUpperCase().replace('_', '_');
+    if (key.includes('BAIXO')) return 'bg-green-500';
+    if (key.includes('MEDIO')) return 'bg-yellow-500';
+    if (key.includes('MUITO_ALTO')) return 'bg-red-500';
+    if (key.includes('ALTO')) return 'bg-orange-500';
+    return 'bg-slate-500';
+  };
+
+  // Tradução amigável dos nomes dos fatores críticos
+  const MAPA_FATORES: Record<string, string> = {
+    ansiedade_severa: 'Ansiedade Severa',
+    sintomas_depressivos: 'Sintomas Depressivos',
+    disturbios_sono: 'Distúrbios do Sono',
+    conflito_trabalho_estudo: 'Conflito Trabalho-Estudo',
+    trabalho_atrapalha_estudos: 'Trabalho Atrapalha os Estudos',
+    baixa_autoestima: 'Baixa Autoestima',
+    isolamento_social: 'Isolamento Social',
+    dificuldade_financeira: 'Dificuldade Financeira',
+    problemas_familiares: 'Problemas Familiares',
+    desmotivacao_academica: 'Desmotivação Acadêmica',
+    bullying: 'Bullying / Assédio',
+    problemas_saude: 'Problemas de Saúde',
+    falta_apoio_institucional: 'Falta de Apoio Institucional',
+    discriminacao: 'Discriminação',
+    dificuldade_aprendizado: 'Dificuldade de Aprendizado',
+    problemas_transporte: 'Problemas com Transporte',
+    gravidez_maternidade: 'Gravidez / Maternidade',
+    uso_substancias: 'Uso de Substâncias',
+    evasao_anterior: 'Histórico de Evasão',
+    insatisfacao_curso: 'Insatisfação com o Curso',
+  };
+
+  const traduzirFator = (fator: string) => MAPA_FATORES[fator] || fator.replace(/_/g, ' ');
+
+  // Tradução dos níveis de risco
+  const MAPA_NIVEIS: Record<string, string> = {
+    risco_baixo: 'Baixo',
+    risco_medio: 'Médio',
+    risco_alto: 'Alto',
+    risco_muito_alto: 'Muito Alto',
   };
 
   return (
@@ -175,8 +216,8 @@ export const DashboardQuestionario: React.FC = () => {
               {Object.entries(stats.distribuicao_risco).map(([nivel, quantidade]) => (
                 <div key={nivel}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                      {nivel.replace('_', ' ')}
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400 capitalize">
+                      {MAPA_NIVEIS[nivel] || nivel.replace('_', ' ')}
                     </span>
                     <span className="text-sm font-bold text-slate-800 dark:text-white">
                       {quantidade}
@@ -184,7 +225,7 @@ export const DashboardQuestionario: React.FC = () => {
                   </div>
                   <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${getCorRisco(nivel.toUpperCase())} transition-all duration-500`}
+                      className={`h-full ${getCorRisco(nivel)} transition-all duration-500`}
                       style={{
                         width: `${stats.total_respostas > 0 ? (quantidade / stats.total_respostas) * 100 : 0}%`,
                       }}
@@ -207,8 +248,8 @@ export const DashboardQuestionario: React.FC = () => {
                     <span className="shrink-0 w-6 h-6 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center text-xs font-bold">
                       {index + 1}
                     </span>
-                    <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 capitalize">
-                      {item.fator.replace('_', ' ')}
+                    <span className="flex-1 text-sm text-slate-700 dark:text-slate-300">
+                      {traduzirFator(item.fator)}
                     </span>
                     <span className="text-sm font-bold text-slate-800 dark:text-white">
                       {item.quantidade}
@@ -262,6 +303,62 @@ export const DashboardQuestionario: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* Lista de Alunos que Responderam */}
+        {mostrarResponderam && alunosResponderam.length > 0 && (
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white">
+                ✅ Alunos que Responderam ({alunosResponderam.length})
+              </h3>
+              <button
+                onClick={() => setMostrarResponderam(false)}
+                className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-400">Matrícula</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-400">Nome</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-400">Curso</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-400">Nível de Risco</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-400">Score</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-600 dark:text-slate-400">Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {alunosResponderam.map((aluno) => (
+                    <tr key={aluno.matricula} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="py-3 px-4 text-sm font-mono text-slate-800 dark:text-slate-200">{aluno.matricula}</td>
+                      <td className="py-3 px-4 text-sm text-slate-800 dark:text-slate-200 font-medium">{aluno.nome}</td>
+                      <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-400">{aluno.curso || 'N/A'}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
+                          aluno.nivel_risco === 'BAIXO' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                          aluno.nivel_risco === 'MEDIO' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                          aluno.nivel_risco === 'ALTO' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {aluno.nivel_risco?.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-800 dark:text-slate-200">{aluno.score_total?.toFixed(1)}</td>
+                      <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400">
+                        {new Date(aluno.data_resposta).toLocaleDateString('pt-BR')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Lista de Alunos sem Responder */}
         {mostrarAlunosSem && alunosSem.length > 0 && (

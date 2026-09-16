@@ -6,7 +6,7 @@
  * Ações operacionais (criar/sugerir) são feitas nos módulos de Risco e Monitoramento.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Filter,
   ChevronLeft,
@@ -21,19 +21,24 @@ import {
   Calendar,
   User,
   TrendingUp,
-  Phone,
   MessageCircle
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { StatusIntervencao, IntervencaoAPI, IntervencaoUpdate } from '../types';
+import { StatusIntervencao, IntervencaoAPI, IntervencaoUpdate, AlunoAPI } from '../types';
 import { cn } from '../utils';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../services/AuthContext';
 import api from '../services/api';
 import IntervencaoModal from '../components/IntervencaoModal';
 
-// Mapeamento de status para cores e ícones (Excluindo RASCUNHO da view principal)
+// Labels profissionais para os status
+const statusLabel: Record<string, string> = {
+  PENDENTE: 'Pendentes',
+  EM_ANDAMENTO: 'Em Andamento',
+  CONCLUIDA: 'Concluídas',
+  CANCELADA: 'Canceladas',
+};
 const statusConfig = {
   [StatusIntervencao.PENDENTE]: {
     color: 'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -57,6 +62,19 @@ const statusConfig = {
   }
 };
 
+interface AlunoComResponsavel extends AlunoAPI {
+  nome_responsavel_1?: string;
+  parentesco_responsavel_1?: string;
+  telefone_responsavel_1?: string;
+}
+
+interface StatsIntervencoes {
+  total?: number;
+  ativas?: number;
+  pendentes?: number;
+  taxa_conclusão?: number;
+}
+
 // Mapeamento de prioridade para cores
 const prioridadeConfig = {
   BAIXA: 'bg-green-500',
@@ -67,26 +85,20 @@ const prioridadeConfig = {
 
 export default function Intervencoes() {
   const { addToast } = useToast();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedIntervencao, setSelectedIntervencao] = useState<IntervencaoAPI | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [intervencoes, setIntervencoes] = useState<IntervencaoAPI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<StatsIntervencoes | null>(null);
 
   const status = searchParams.get('status') || '';
   const page = parseInt(searchParams.get('page') || '1');
   const limit = 20;
 
-  // Carregar intervenções
-  React.useEffect(() => {
-    loadIntervencoes();
-    loadStats();
-  }, [status, page]);
-
-  const loadIntervencoes = async () => {
+  const loadIntervencoes = useCallback(async () => {
     if (!token) return;
 
     setIsLoading(true);
@@ -98,28 +110,28 @@ export default function Intervencoes() {
         status || undefined
       );
       // Filtro de segurança para garantir que RASCUNHOS não apareçam aqui
-      setIntervencoes(data.filter((int: any) => int.status !== 'RASCUNHO'));
-    } catch (error: any) {
+      setIntervencoes(data.filter((int: IntervencaoAPI) => int.status !== 'RASCUNHO'));
+    } catch (error: unknown) {
       addToast({
         type: 'error',
         title: 'Erro ao carregar intervenções',
-        message: error.message
+        message: error instanceof Error ? error.message : 'Erro ao carregar intervenções'
       });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, status, page, addToast]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!token) return;
 
     try {
       const data = await api.intervencoes.stats(token);
       setStats(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar stats:', error);
     }
-  };
+  }, [token]);
 
   const handleEdit = (intervencao: IntervencaoAPI) => {
     setSelectedIntervencao(intervencao);
@@ -143,11 +155,11 @@ export default function Intervencoes() {
 
       await loadIntervencoes();
       await loadStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       addToast({
         type: 'error',
         title: 'Erro ao atualizar',
-        message: error.message
+        message: error instanceof Error ? error.message : 'Erro ao atualizar intervenção'
       });
     }
   };
@@ -168,14 +180,20 @@ export default function Intervencoes() {
 
       await loadIntervencoes();
       await loadStats();
-    } catch (error: any) {
+    } catch (error: unknown) {
       addToast({
         type: 'error',
         title: 'Erro ao excluir',
-        message: error.message
+        message: error instanceof Error ? error.message : 'Erro ao excluir intervenção'
       });
     }
   };
+
+  // Carregar intervenções
+  React.useEffect(() => {
+    loadIntervencoes();
+    loadStats();
+  }, [status, page, loadIntervencoes, loadStats]);
 
   const handleStatusFilter = (newStatus: string) => {
     const params = new URLSearchParams(searchParams);
@@ -302,7 +320,7 @@ export default function Intervencoes() {
                   : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700"
               )}
             >
-              {s.replace('_', ' ')}
+              {statusLabel[s]}
             </button>
           ))}
         </div>
@@ -312,7 +330,7 @@ export default function Intervencoes() {
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="p-4 md:p-6 border-b border-gray-100 dark:border-slate-700">
           <h2 className="text-base md:text-lg font-bold text-gray-800 dark:text-white">
-            {status ? `${status.replace('_', ' ')}` : 'Todas'} as Intervenções
+            {status && statusLabel[status] ? statusLabel[status] : 'Todas'} as Intervenções
           </h2>
         </div>
 
@@ -401,27 +419,27 @@ export default function Intervencoes() {
                         </div>
 
                         {/* Contato do Responsável */}
-                        {(intervencao.aluno as any)?.nome_responsavel_1 && (
+                        {(intervencao.aluno as AlunoComResponsavel)?.nome_responsavel_1 && (
                           <div className="mt-3 p-2.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-0.5">
                                 👤 Responsável
                               </p>
                               <p className="text-sm text-emerald-800 dark:text-emerald-300 font-medium truncate">
-                                {(intervencao.aluno as any).nome_responsavel_1}
-                                {(intervencao.aluno as any).parentesco_responsavel_1 && (
+                                {(intervencao.aluno as AlunoComResponsavel).nome_responsavel_1}
+                                {(intervencao.aluno as AlunoComResponsavel).parentesco_responsavel_1 && (
                                   <span className="text-xs font-normal text-emerald-600 dark:text-emerald-500 ml-1">
-                                    • {(intervencao.aluno as any).parentesco_responsavel_1}
+                                    • {(intervencao.aluno as AlunoComResponsavel).parentesco_responsavel_1}
                                   </span>
                                 )}
                               </p>
-                              {(intervencao.aluno as any).telefone_responsavel_1 && (
+                              {(intervencao.aluno as AlunoComResponsavel).telefone_responsavel_1 && (
                                 <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                                  {(intervencao.aluno as any).telefone_responsavel_1}
+                                  {(intervencao.aluno as AlunoComResponsavel).telefone_responsavel_1}
                                 </p>
                               )}
                             </div>
-                            {(intervencao.aluno as any).telefone_responsavel_1 && (
+                            {(intervencao.aluno as AlunoComResponsavel).telefone_responsavel_1 && (
                               <button
                                 onClick={async () => {
                                   try {
@@ -430,23 +448,23 @@ export default function Intervencoes() {
                                     
                                     // Disparar via serviço unificado
                                     const comunicacao = await api.comunicacoes.disparar(token, {
-                                      aluno_matricula: (intervencao.aluno as any).matricula,
+                                      aluno_matricula: (intervencao.aluno as AlunoComResponsavel).matricula,
                                       template_id: 'INTERVENCAO_INICIO',
                                       contexto: {
                                         nome_aluno: intervencao.aluno.nome,
-                                        nome_responsavel: (intervencao.aluno as any).nome_responsavel_1 || 'Responsável',
+                                        nome_responsavel: (intervencao.aluno as AlunoComResponsavel).nome_responsavel_1 || 'Responsável',
                                         tipo_intervencao: intervencao.tipo,
                                         data_intervencao: intervencao.data_intervencao ? new Date(intervencao.data_intervencao).toLocaleDateString('pt-BR') : 'N/A',
                                       },
                                       canal: 'WHATSAPP',
                                       destinatario_tipo: 'RESPONSAVEL',
-                                      destinatario_nome: (intervencao.aluno as any).nome_responsavel_1 || 'Responsável',
-                                      destinatario_contato: (intervencao.aluno as any).telefone_responsavel_1 || '',
+                                      destinatario_nome: (intervencao.aluno as AlunoComResponsavel).nome_responsavel_1 || 'Responsável',
+                                      destinatario_contato: (intervencao.aluno as AlunoComResponsavel).telefone_responsavel_1 || '',
                                       modulo_origem: 'INTERVENCAO',
                                     });
                                     
                                     // Abrir WhatsApp com mensagem gerada
-                                    const telefone = (intervencao.aluno as any).telefone_responsavel_1.replace(/\D/g, '');
+                                    const telefone = ((intervencao.aluno as AlunoComResponsavel).telefone_responsavel_1 ?? '').replace(/\D/g, '');
                                     const mensagemCodificada = encodeURIComponent(comunicacao.mensagem);
                                     window.open(`https://wa.me/55${telefone}?text=${mensagemCodificada}`, '_blank', 'noopener noreferrer');
                                     

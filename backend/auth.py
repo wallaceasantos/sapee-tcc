@@ -1,13 +1,20 @@
-from datetime import datetime, timedelta
+import json
+import logging
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
-import models, database
-import os
-from dotenv import load_dotenv
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session, joinedload
+
+import database
+import models
+
+logger = logging.getLogger(__name__)
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -18,12 +25,12 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY não configurada no .env")
-    
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
-print(f"✅ JWT configurado: ALGORITHM={ALGORITHM}, EXPIRE={ACCESS_TOKEN_EXPIRE_MINUTES}min")
+logger.info("JWT configurado: ALGORITHM=%s, EXPIRE=%smin", ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES)
 
 # ============================================
 # HASH DE SENHAS
@@ -36,47 +43,53 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 # FUNÇÕES DE HASH
 # ============================================
 
+
 def verificar_senha(senha_plain: str, senha_hash: str) -> bool:
     """Verifica se a senha plain corresponde ao hash"""
     return pwd_context.verify(senha_plain, senha_hash)
+
 
 def gerar_hash_senha(senha: str) -> str:
     """Gera hash bcrypt para a senha"""
     return pwd_context.hash(senha)
 
+
 # ============================================
 # FUNÇÕES JWT
 # ============================================
 
+
 def criar_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Cria JWT access token"""
     to_encode = data.copy()
-    
+
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
     # Converter user_id para string (python-jose exige string no 'sub')
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
-    
+
     to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 def criar_refresh_token(data: dict) -> str:
     """Cria JWT refresh token"""
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+
     # Converter user_id para string
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
-    
+
     to_encode.update({"exp": expire, "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 def decode_token(token: str) -> Optional[dict]:
     """Decodifica e valida token JWT"""
@@ -88,13 +101,14 @@ def decode_token(token: str) -> Optional[dict]:
     except Exception:
         return None
 
+
 # ============================================
 # DEPENDÊNCIAS
 # ============================================
 
+
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(database.get_db)
+    token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)
 ) -> models.Usuario:
     """
     Dependência para obter usuário atual do token JWT.
@@ -105,50 +119,53 @@ async def get_current_user(
         detail="Credenciais não podem ser validadas",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     # Decodificar token
     payload = decode_token(token)
-    
+
     if payload is None:
         raise credentials_exception
-    
+
     # Verificar se é access token
     if payload.get("type") != "access":
         raise credentials_exception
-    
+
     # Extrair user_id (vem como string, converter para int)
     user_id_str: str = payload.get("sub")
     if user_id_str is None:
         raise credentials_exception
-    
+
     try:
         user_id: int = int(user_id_str)
     except ValueError:
         raise credentials_exception
-    
-    # Buscar usuário no banco
-    user = db.query(models.Usuario).filter(models.Usuario.id == user_id).first()
+
+    # Buscar usuário no banco (com eager load da role para evitar N+1)
+    user = (
+        db.query(models.Usuario)
+        .options(joinedload(models.Usuario.role))
+        .filter(models.Usuario.id == user_id)
+        .first()
+    )
     if user is None:
         raise credentials_exception
-    
+
     # Verificar se usuário está ativo
     if not user.ativo:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário inativo"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Usuário inativo")
+
     return user
 
+
 async def get_current_active_user(
-    current_user: models.Usuario = Depends(get_current_user)
+    current_user: models.Usuario = Depends(get_current_user),
 ) -> models.Usuario:
     """Dependência para usuário ativo (extends get_current_user)"""
     return current_user
 
+
 async def get_current_admin_user(
-    current_user: models.Usuario = Depends(get_current_user),
-    db: Session = Depends(database.get_db)
+    current_user: models.Usuario = Depends(get_current_user), db: Session = Depends(database.get_db)
 ) -> models.Usuario:
     """
     Dependência para usuário ADMIN.
@@ -158,38 +175,62 @@ async def get_current_admin_user(
     if current_user.role.nome != "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permissão negada. Apenas administradores."
+            detail="Permissão negada. Apenas administradores.",
         )
-    
+
     return current_user
+
+
+def require_roles(*roles: str):
+    """
+    Fábrica de dependência que restringe o acesso aos papéis informados.
+    O papel ADMIN é sempre permitido.
+
+    Uso:
+        current_user: models.Usuario = Depends(auth.require_roles("COORDENADOR", "PEDAGOGO"))
+    """
+    allowed = {r.upper() for r in roles} | {"ADMIN"}
+
+    async def _check_role(
+        current_user: models.Usuario = Depends(get_current_user),
+    ) -> models.Usuario:
+        role_nome = (current_user.role.nome or "").upper() if current_user.role else ""
+        if role_nome not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permissão negada. Requer um dos perfis: {', '.join(sorted(allowed))}.",
+            )
+        return current_user
+
+    return _check_role
+
 
 # ============================================
 # VERIFICAÇÃO DE PERMISSÕES
 # ============================================
 
-import json
 
 def verificar_permissao(usuario: models.Usuario, recurso: str, acao: Optional[str] = None) -> bool:
     """
     Verifica se usuário tem permissão para recurso/ação.
-    
+
     Exemplo:
     verificar_permissao(usuario, "alunos", "delete")
     verificar_permissao(usuario, "logs")  # Verifica se tem acesso (boolean)
     """
     if not usuario:
         return False
-    
+
     # ADMIN tem todas as permissões
     if usuario.role.nome == "ADMIN":
         return True
-    
+
     # Parse das permissões (JSON string)
     try:
         permissoes = json.loads(usuario.role.permissoes or "{}")
-    except:
+    except Exception:
         permissoes = {}
-    
+
     # Verificar permissão específica
     if acao:
         recurso_perms = permissoes.get(recurso, [])

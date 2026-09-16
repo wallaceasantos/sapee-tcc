@@ -35,35 +35,30 @@ print("=" * 60)
 try:
     # Conectar ao MySQL
     connection = pymysql.connect(
-        host=host,
-        port=port,
-        user=user,
-        password=password,
-        database=database,
-        charset='utf8mb4'
+        host=host, port=port, user=user, password=password, database=database, charset="utf8mb4"
     )
-    
+
     cursor = connection.cursor()
-    
+
     print("\n✅ Conexao estabelecida com sucesso!")
-    
+
     # Verificar se a tabela existe
     cursor.execute("SHOW TABLES LIKE 'intervencoes'")
     tabela_existe = cursor.fetchone()
-    
+
     if tabela_existe:
         print("\n⚠️  Tabela 'intervencoes' ja existe!")
-        
+
         # Verificar estrutura
         cursor.execute("DESCRIBE intervencoes")
         colunas = cursor.fetchall()
-        
+
         print("\nEstrutura atual:")
         for coluna in colunas:
             print(f"  - {coluna[0]}: {coluna[1]}")
     else:
         print("\n📋 Criando tabela 'intervencoes'...")
-        
+
         # SQL para criar tabela
         sql = """
         CREATE TABLE IF NOT EXISTS intervencoes (
@@ -87,32 +82,32 @@ try:
             INDEX idx_data (data_intervencao)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
-        
+
         cursor.execute(sql)
         connection.commit()
-        
+
         print("✅ Tabela 'intervencoes' criada com sucesso!")
-        
+
         # Verificar estrutura
         cursor.execute("DESCRIBE intervencoes")
         colunas = cursor.fetchall()
-        
+
         print("\nEstrutura criada:")
         for coluna in colunas:
             print(f"  - {coluna[0]}: {coluna[1]}")
-    
+
     # Contar registros existentes
     cursor.execute("SELECT COUNT(*) FROM intervencoes")
     count = cursor.fetchone()[0]
     print(f"\n📊 Registros existentes: {count}")
-    
+
     print("\n" + "=" * 60)
     print("✅ Processo concluido com sucesso!")
     print("=" * 60)
-    
+
     cursor.close()
     connection.close()
-    
+
 except pymysql.Error as e:
     print(f"\n❌ Erro ao conectar ao MySQL: {e}")
     exit(1)

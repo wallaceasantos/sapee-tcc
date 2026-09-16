@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, ShieldCheck, GraduationCap, AlertCircle, Loader2, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../services/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { logAction } from '../services/logService';
-
+import { storage } from '../utils/storage';
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -12,17 +11,15 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('sapee_theme') === 'dark';
-  });
+  const [isDarkMode, setIsDarkMode] = useState(() => storage.theme.get() === 'dark');
 
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('sapee_theme', 'dark');
+      storage.theme.set('dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('sapee_theme', 'light');
+      storage.theme.set('light');
     }
   }, [isDarkMode]);
 
@@ -34,7 +31,7 @@ export default function Login() {
     // Login com novo AuthContext
     login(email, password).then((success) => {
       if (success) {
-        localStorage.setItem('sapee_user_email', email);
+        storage.userEmail.set(email);
         navigate('/');
       } else {
         setError('E-mail ou senha inválidos. Verifique suas credenciais.');

@@ -1,4 +1,4 @@
-import { useAuth } from './AuthContext';
+import { storage } from '../utils/storage';
 
 export interface AuditLog {
   id: number;
@@ -9,14 +9,13 @@ export interface AuditLog {
   criado_at: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export const logAction = async (acao: string, detalhes?: string) => {
-  const userEmail = localStorage.getItem('sapee_user_email') || 'sistema@dewas.com.br';
-  const token = localStorage.getItem('sapee_token');
+  const userEmail = storage.userEmail.get() || 'sistema@dewas.com.br';
+  const token = storage.token.get();
 
-  // Salva sempre no localStorage (fallback)
-  const logs = JSON.parse(localStorage.getItem('sapee_audit_logs') || '[]');
+  const logs = storage.auditLogs.get();
   const newLog = {
     id: Date.now(),
     usuario_email: userEmail,
@@ -24,9 +23,8 @@ export const logAction = async (acao: string, detalhes?: string) => {
     detalhes,
     criado_at: new Date().toISOString(),
   };
-  localStorage.setItem('sapee_audit_logs', JSON.stringify([newLog, ...logs].slice(0, 100)));
+  storage.auditLogs.set([newLog, ...logs].slice(0, 100));
 
-  // Envia para backend
   if (token) {
     try {
       const response = await fetch(`${API_BASE_URL}/audit-logs`, {
@@ -52,9 +50,8 @@ export const logAction = async (acao: string, detalhes?: string) => {
 };
 
 export const getAuditLogs = async (): Promise<AuditLog[]> => {
-  const token = localStorage.getItem('sapee_token');
+  const token = storage.token.get();
 
-  // Tenta buscar do backend primeiro
   if (token) {
     try {
       const response = await fetch(`${API_BASE_URL}/audit-logs?limit=100`, {
@@ -65,20 +62,22 @@ export const getAuditLogs = async (): Promise<AuditLog[]> => {
 
       if (response.ok) {
         const logs = await response.json();
-        return logs.map((log: any) => ({
-          id: log.id,
-          usuario_email: log.usuario?.email || 'sistema',
-          acao: log.acao,
-          detalhes: log.detalhes,
-          ip_address: log.ip_address,
-          criado_at: log.criado_at,
-        }));
+        return logs.map((log: unknown) => {
+          const logRecord = log as Record<string, unknown>;
+          return {
+            id: logRecord.id as number,
+            usuario_email: (logRecord.usuario as { email?: string } | undefined)?.email || 'sistema',
+            acao: logRecord.acao as string,
+            detalhes: logRecord.detalhes as string | undefined,
+            ip_address: logRecord.ip_address as string | undefined,
+            criado_at: logRecord.criado_at as string,
+          };
+        });
       }
     } catch (error) {
       console.warn('Backend offline, usando logs locais:', error);
     }
   }
 
-  // Fallback para localStorage
-  return JSON.parse(localStorage.getItem('sapee_audit_logs') || '[]');
+  return storage.auditLogs.get<AuditLog>();
 };

@@ -19,11 +19,9 @@ import {
   Clock,
   Search,
   Filter,
-  Eye,
   Edit,
   Save,
   BarChart3,
-  Users,
   AlertCircle,
   X,
   MessageSquare,
@@ -36,6 +34,7 @@ import { cn } from '../utils';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../services/AuthContext';
 import IntervencaoModal from '../components/IntervencaoModal';
+import { IntervencaoCreate } from '../types';
 import api from '../services/api';
 
 // ============================================
@@ -159,8 +158,12 @@ export default function AlertasFaltas() {
   const [faltasStats, setFaltasStats] = useState<FaltasStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [comparativoMensal, setComparativoMensal] = useState<any>(null);
-  const [dashboardEfetividade, setDashboardEfetividade] = useState<any>(null);
+  const [comparativoMensal, setComparativoMensal] = useState<{
+    meses: Array<{ mes: string; total: number; resolvidos: number; pendentes: number }>;
+    variacao_percentual: number;
+    total_6_meses: number;
+  } | null>(null);
+  const [dashboardEfetividade, setDashboardEfetividade] = useState<Record<string, number> | null>(null);
   
   // Estados de filtros
   const [filtroStatus, setFiltroStatus] = useState<string>('');
@@ -181,7 +184,7 @@ export default function AlertasFaltas() {
 
   // Estados para criação de intervenção
   const [showIntervencaoModal, setShowIntervencaoModal] = useState(false);
-  const [alunoParaIntervencao, setAlunoParaIntervencao] = useState<any>(null);
+  const [alunoParaIntervencao, setAlunoParaIntervencao] = useState<{ matricula: string; nome: string; frequencia: number; curso: string } | null>(null);
   const [alertaSelecionadoParaIntervencao, setAlertaSelecionadoParaIntervencao] = useState<Alerta | null>(null);
 
   // ============================================
@@ -217,11 +220,11 @@ export default function AlertasFaltas() {
         const data = await response.json();
         setAlertas(data);
       }
-    } catch (error: any) {
+    } catch (error) {
       addToast({
         type: 'error',
         title: 'Erro ao carregar',
-        message: error.message
+        message: error instanceof Error ? error.message : 'Erro ao carregar alertas'
       });
     } finally {
       setIsLoading(false);
@@ -468,11 +471,11 @@ export default function AlertasFaltas() {
           message: error.detail || 'Erro desconhecido'
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       addToast({
         type: 'error',
         title: 'Erro ao atualizar',
-        message: error.message
+        message: error instanceof Error ? error.message : 'Erro ao atualizar alerta'
       });
     }
   };
@@ -492,7 +495,7 @@ export default function AlertasFaltas() {
     setShowIntervencaoModal(true);
   };
 
-  const handleSaveIntervencao = async (data: any) => {
+  const handleSaveIntervencao = async (data: IntervencaoCreate & { matricula?: string }) => {
     if (!token || !alunoParaIntervencao) return;
 
     try {
@@ -546,11 +549,11 @@ export default function AlertasFaltas() {
 
       await loadAlertas();
       await loadStats();
-    } catch (error: any) {
+    } catch (error) {
       addToast({
         type: 'error',
         title: 'Erro ao criar',
-        message: error.message || 'Erro ao criar intervenção'
+        message: error instanceof Error ? error.message : 'Erro ao criar intervenção'
       });
     }
   };
@@ -570,16 +573,6 @@ export default function AlertasFaltas() {
       setShowBatchActions(novo.size > 0);
       return novo;
     });
-  };
-
-  const selecionarTodos = () => {
-    if (alertasSelecionados.size === alertasFiltrados.length) {
-      setAlertasSelecionados(new Set());
-      setShowBatchActions(false);
-    } else {
-      setAlertasSelecionados(new Set(alertasFiltrados.map(a => a.id)));
-      setShowBatchActions(true);
-    }
   };
 
   const handleBatchStatusChange = async (novoStatus: string) => {
@@ -618,11 +611,11 @@ export default function AlertasFaltas() {
       setShowBatchActions(false);
       await loadAlertas();
       await loadStats();
-    } catch (error: any) {
+    } catch (error) {
       addToast({
         type: 'error',
         title: 'Erro ao atualizar',
-        message: error.message
+        message: error instanceof Error ? error.message : 'Erro ao atualizar alertas em lote'
       });
     }
   };
@@ -671,11 +664,11 @@ export default function AlertasFaltas() {
         message: `Alerta de ${alerta.quantidade_faltas} faltas registrado e enviado via Telegram`
       });
       loadAlertas();
-    } catch (error: any) {
+    } catch (error) {
       addToast({
         type: 'error',
         title: 'Erro ao enviar',
-        message: error.message || 'Erro ao enviar alerta via Telegram'
+        message: error instanceof Error ? error.message : 'Erro ao enviar alerta via Telegram'
       });
     }
   };
@@ -764,8 +757,8 @@ export default function AlertasFaltas() {
                 await loadAlertas();
                 await loadStats();
               }
-            } catch (error: any) {
-              addToast({ type: 'error', title: 'Erro', message: error.message });
+            } catch (error) {
+              addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao processar auto-resolução' });
             }
           }}
           className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all text-sm min-h-11"
@@ -883,7 +876,7 @@ export default function AlertasFaltas() {
           </h3>
 
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-            {comparativoMensal.meses.map((mes: any, idx: number) => (
+            {comparativoMensal.meses.map((mes, idx) => (
               <div key={idx} className={cn(
                 "p-3 rounded-xl border text-center",
                 idx === comparativoMensal.meses.length - 1
@@ -1078,7 +1071,6 @@ export default function AlertasFaltas() {
           </div>
         ) : (
           alertasFiltrados.map((alerta) => {
-            const StatusIcon = statusConfig[alerta.status].icon;
             const tipoConfig = tipoAlertaConfig[alerta.tipo_alerta];
             const TipoIcon = tipoConfig.icon;
             const disciplinas = parseDisciplinas(alerta.disciplinas_afetadas);

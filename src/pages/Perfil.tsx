@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, Mail, Shield, Calendar, Clock, Key, Save, Lock, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useAuth, Role } from '../services/AuthContext';
+import { useAuth } from '../services/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { cn } from '../utils';
 import api from '../services/api';
@@ -76,12 +76,12 @@ export default function Perfil() {
 
       setIsEditingSenha(false);
       setSenhaData({ atual: '', nova: '', confirmacao: '' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao trocar senha:', error);
       addToast({
         type: 'error',
         title: 'Erro ao trocar senha',
-        message: error.message || 'Não foi possível alterar sua senha.',
+        message: error instanceof Error ? error.message : 'Não foi possível alterar sua senha.',
       });
     }
   };
@@ -115,7 +115,7 @@ export default function Perfil() {
             <div className="flex-1">
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{user.nome}</h3>
               <div className="flex items-center gap-3 mt-2">
-                <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase", roleColors[user.role])}>
+                <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase", roleColors[user.role as keyof typeof roleColors])}>
                   {user.role}
                 </span>
                 {user.curso_nome && (

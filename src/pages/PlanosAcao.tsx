@@ -3,7 +3,7 @@
  * SAPEE DEWAS - Sistema de Planos de Ação por Curso e Nível de Risco
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Target, 
   Plus, 
@@ -74,12 +74,7 @@ export default function PlanosAcao() {
   const [acoesSelecionadas, setAcoesSelecionadas] = useState<string[]>([]);
   const [observacoes, setObservacoes] = useState('');
 
-  useEffect(() => {
-    loadPlanos();
-    loadCursos();
-  }, []);
-
-  const loadPlanos = async () => {
+  const loadPlanos = useCallback(async () => {
     if (!token) return;
     
     setIsLoading(true);
@@ -93,18 +88,19 @@ export default function PlanosAcao() {
         const data = await response.json();
         setPlanos(data);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao carregar planos';
       addToast({
         type: 'error',
         title: 'Erro ao carregar',
-        message: error.message
+        message: mensagem
       });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, addToast]);
 
-  const loadCursos = async () => {
+  const loadCursos = useCallback(async () => {
     if (!token) return;
     
     try {
@@ -117,7 +113,7 @@ export default function PlanosAcao() {
         const data = await response.json();
         setCursos(data);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao carregar cursos:', error);
       addToast({
         type: 'error',
@@ -125,7 +121,12 @@ export default function PlanosAcao() {
         message: 'Não foi possível carregar lista de cursos',
       });
     }
-  };
+  }, [token, addToast]);
+
+  useEffect(() => {
+    loadPlanos();
+    loadCursos();
+  }, [loadPlanos, loadCursos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,11 +181,12 @@ export default function PlanosAcao() {
           message: error.detail || 'Erro ao salvar plano'
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao salvar plano';
       addToast({
         type: 'error',
         title: 'Erro',
-        message: error.message
+        message: mensagem
       });
     }
   };
@@ -217,8 +219,9 @@ export default function PlanosAcao() {
         addToast({ type: 'success', title: 'Desativado', message: 'Plano desativado com sucesso' });
         loadPlanos();
       }
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao desativar plano';
+      addToast({ type: 'error', title: 'Erro', message: mensagem });
     }
   };
 

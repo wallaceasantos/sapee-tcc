@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, Save, CheckCircle, AlertCircle, Loader2, Search, X } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useToast } from '../components/ui/Toast';
 import { useAlunos } from '../hooks/useAlunos';
 import { useAuth } from '../services/AuthContext';
@@ -23,7 +22,6 @@ interface AlunoSelecionado {
 export default function LancarFrequencia() {
   const { addToast } = useToast();
   const { user, can } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
   // Filtros
@@ -101,7 +99,7 @@ export default function LancarFrequencia() {
   });
   
   // Selecionar/desmarcar aluno
-  const toggleAluno = (aluno: any) => {
+  const toggleAluno = (aluno: { matricula: string; nome: string; curso?: { nome?: string }; frequencia?: number }) => {
     const jaSelecionado = alunosSelecionados.find(a => a.matricula === aluno.matricula);
     
     if (jaSelecionado) {

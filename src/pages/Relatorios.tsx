@@ -3,18 +3,58 @@
  * SAPEE DEWAS - Análise baseada em dados reais do sistema
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, ZAxis, PieChart, Pie, Cell } from 'recharts';
-import { Download, FileText, Filter, Lightbulb, TrendingUp, Users, Calendar, ChevronDown, Share2, Printer, Loader2, BarChart3 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Download, FileText, Filter, Lightbulb, TrendingUp, Users, Calendar, ChevronDown, Share2, Printer, Loader2, BarChart3, LucideProps } from 'lucide-react';
+import { motion } from 'motion/react';
 import api from '../services/api';
 import { NivelRisco } from '../types';
 import { cn } from '../utils';
-import { RiskBadge, StatCard } from '../components/ui';
+
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../services/AuthContext';
 
 const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+interface Predicao {
+  nivel_risco: NivelRisco;
+  risco_evasao: number | string;
+}
+
+interface Aluno {
+  matricula: string;
+  nome: string;
+  curso?: { nome?: string } | null;
+  curso_nome?: string;
+  predicao?: Predicao | null;
+  predicao_atual?: Predicao | null;
+  frequencia?: number | string;
+  media_geral?: number | string;
+  renda_familiar?: number | string;
+  cidade?: string;
+}
+
+interface IntervencoesStats {
+  ativas?: number;
+  taxa_conclusao?: number;
+}
+
+interface RendaData {
+  faixa: string;
+  risco: number;
+}
+
+interface CidadeData {
+  name: string;
+  risco: number;
+}
+
+interface CursoRiscoData {
+  curso: string;
+  baixo: number;
+  medio: number;
+  alto: number;
+}
 
 export default function Relatorios() {
   const { token } = useAuth();
@@ -26,25 +66,18 @@ export default function Relatorios() {
   const [loading, setLoading] = useState(true);
   
   // Dados reais do sistema
-  const [stats, setStats] = useState<any>(null);
-  const [alunos, setAlunos] = useState<any[]>([]);
-  const [cursos, setCursos] = useState<any[]>([]);
-  const [intervencoes, setIntervencoes] = useState<any>(null);
-  const [eficacia, setEficacia] = useState<any>(null);
+  const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [cursos] = useState<{ id?: number | string; nome: string }[]>([]);
+  const [intervencoes, setIntervencoes] = useState<IntervencoesStats | null>(null);
 
-  useEffect(() => {
-    carregarDados();
-  }, [token]);
-
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     if (!token) return;
     
     try {
       setLoading(true);
       
-      // Carregar estatísticas gerais
-      const statsData = await api.dashboard.stats(token);
-      setStats(statsData);
+      // Carregar estatísticas gerais (descartadas, mantidas por efeito colateral)
+      await api.dashboard.stats(token);
       
       // Carregar todos os alunos
       const alunosData = await api.alunos.list(token, 0, 1000);
@@ -63,10 +96,9 @@ export default function Relatorios() {
         });
       }
       
-      // Carregar eficácia do sistema
+      // Carregar eficácia do sistema (descartada, mantida por efeito colateral)
       try {
-        const eficaciaData = await api.intervencoes.eficacia(token);
-        setEficacia(eficaciaData);
+        await api.intervencoes.eficacia(token);
       } catch (e) {
         console.warn('Erro ao carregar eficácia:', e);
         addToast({
@@ -92,29 +124,33 @@ export default function Relatorios() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, addToast]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   // Filtrar alunos por curso
   const alunosFiltrados = curso === 'Todos' 
     ? alunos 
-    : alunos.filter((a: any) => {
+    : alunos.filter((a) => {
         const cursoNome = a.curso?.nome || a.curso_nome || '';
         return cursoNome.includes(curso);
       });
 
   // Calcular distribuição de risco
   const totalAlunos = alunosFiltrados.length;
-  const riscoAlto = alunosFiltrados.filter((a: any) => {
+  const riscoAlto = alunosFiltrados.filter((a) => {
     const pred = a.predicao_atual || a.predicao;
     return pred?.nivel_risco === NivelRisco.ALTO || pred?.nivel_risco === NivelRisco.MUITO_ALTO;
   }).length;
   
-  const riscoMedio = alunosFiltrados.filter((a: any) => {
+  const riscoMedio = alunosFiltrados.filter((a) => {
     const pred = a.predicao_atual || a.predicao;
     return pred?.nivel_risco === NivelRisco.MEDIO;
   }).length;
   
-  const riscoBaixo = alunosFiltrados.filter((a: any) => {
+  const riscoBaixo = alunosFiltrados.filter((a) => {
     const pred = a.predicao_atual || a.predicao;
     return pred?.nivel_risco === NivelRisco.BAIXO;
   }).length;
@@ -136,16 +172,16 @@ export default function Relatorios() {
 
   // Dados para scatter plot (frequência vs média)
   const scatterData = alunosFiltrados
-    .filter((a: any) => {
+    .filter((a) => {
       const pred = a.predicao_atual || a.predicao;
       return pred && a.frequencia && a.media_geral;
     })
-    .map((a: any) => {
+    .map((a) => {
       const pred = a.predicao_atual || a.predicao;
       return {
-        frequencia: parseFloat(a.frequencia) || 0,
-        media_geral: parseFloat(a.media_geral) || 0,
-        risco_evasao: parseFloat(pred.risco_evasao) || 0,
+        frequencia: parseFloat(String(a.frequencia)) || 0,
+        media_geral: parseFloat(String(a.media_geral)) || 0,
+        risco_evasao: parseFloat(String(pred?.risco_evasao)) || 0,
         nome: a.nome,
         matricula: a.matricula,
       };
@@ -161,9 +197,9 @@ export default function Relatorios() {
       if (format === 'csv') {
         // Exportação CSV real
         const headers = 'Matrícula;Nome;Curso;Frequência;Média;Risco;Nível de Risco\n';
-        const rows = alunos.map((a: any) => {
+        const rows = alunos.map((a) => {
           const predicao = a.predicao_atual || a.predicao;
-          return `${a.matricula};${a.nome};${a.curso?.nome || a.curso || 'N/A'};${a.frequencia || 0}%;${a.media_geral || 0};${predicao?.risco_evasao || 0}%;${predicao?.nivel_risco || 'N/A'}`;
+          return `${a.matricula};${a.nome};${a.curso?.nome || a.curso_nome || 'N/A'};${a.frequencia || 0}%;${a.media_geral || 0};${predicao?.risco_evasao || 0}%;${predicao?.nivel_risco || 'N/A'}`;
         }).join('\n');
 
         const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
@@ -180,10 +216,10 @@ export default function Relatorios() {
         const data = {
           data_exportacao: new Date().toISOString(),
           total_alunos: alunos.length,
-          alunos: alunos.map((a: any) => ({
+          alunos: alunos.map((a) => ({
             matricula: a.matricula,
             nome: a.nome,
-            curso: a.curso?.nome || a.curso || 'N/A',
+            curso: a.curso?.nome || a.curso_nome || 'N/A',
             frequencia: a.frequencia,
             media_geral: a.media_geral,
             predicao: a.predicao_atual || a.predicao,
@@ -260,7 +296,7 @@ export default function Relatorios() {
               className="text-sm font-semibold bg-transparent border-none focus:ring-0 cursor-pointer text-gray-700 dark:text-slate-300"
             >
               <option value="Todos">Todos os Cursos</option>
-              {cursos.map((c: any) => (
+              {cursos.map((c) => (
                 <option key={c.id || c.nome} value={c.nome}>{c.nome}</option>
               ))}
             </select>
@@ -475,7 +511,7 @@ export default function Relatorios() {
 
 // Funções auxiliares para calcular dados reais
 
-function calcularRiscoPorRenda(alunos: any[]) {
+function calcularRiscoPorRenda(alunos: Aluno[]): RendaData[] {
   const faixas = [
     { faixa: 'Até 1 SM', min: 0, max: 1412, risco: 0, count: 0 },
     { faixa: '1-2 SM', min: 1412, max: 2824, risco: 0, count: 0 },
@@ -483,10 +519,10 @@ function calcularRiscoPorRenda(alunos: any[]) {
     { faixa: 'Acima de 3 SM', min: 4236, max: Infinity, risco: 0, count: 0 },
   ];
 
-  alunos.forEach((a: any) => {
-    const renda = parseFloat(a.renda_familiar) || 0;
+  alunos.forEach((a) => {
+    const renda = parseFloat(String(a.renda_familiar)) || 0;
     const pred = a.predicao_atual || a.predicao;
-    const risco = parseFloat(pred?.risco_evasao) || 0;
+    const risco = parseFloat(String(pred?.risco_evasao)) || 0;
 
     const faixa = faixas.find(f => renda >= f.min && renda < f.max);
     if (faixa) {
@@ -501,13 +537,13 @@ function calcularRiscoPorRenda(alunos: any[]) {
   }));
 }
 
-function calcularRiscoPorCidade(alunos: any[]) {
+function calcularRiscoPorCidade(alunos: Aluno[]): CidadeData[] {
   const cidadesMap = new Map<string, { risco: number; count: number }>();
 
-  alunos.forEach((a: any) => {
+  alunos.forEach((a) => {
     const cidade = a.cidade || 'Não Informada';
     const pred = a.predicao_atual || a.predicao;
-    const risco = parseFloat(pred?.risco_evasao) || 0;
+    const risco = parseFloat(String(pred?.risco_evasao)) || 0;
 
     if (!cidadesMap.has(cidade)) {
       cidadesMap.set(cidade, { risco: 0, count: 0 });
@@ -527,10 +563,10 @@ function calcularRiscoPorCidade(alunos: any[]) {
     .slice(0, 10); // Top 10 cidades
 }
 
-function calcularRiscoPorCurso(alunos: any[]) {
+function calcularRiscoPorCurso(alunos: Aluno[]): CursoRiscoData[] {
   const cursosMap = new Map<string, { baixo: number; medio: number; alto: number }>();
 
-  alunos.forEach((a: any) => {
+  alunos.forEach((a) => {
     const cursoNome = a.curso?.nome || a.curso_nome || 'Sem Curso';
     const pred = a.predicao_atual || a.predicao;
     const nivel = pred?.nivel_risco?.toLowerCase();
@@ -553,7 +589,7 @@ function calcularRiscoPorCurso(alunos: any[]) {
     .filter(d => d.baixo + d.medio + d.alto > 0);
 }
 
-function InsightCard({ title, description, icon: Icon, color }: { title: string, description: string, icon: any, color: 'red' | 'amber' | 'blue' }) {
+function InsightCard({ title, description, icon: Icon, color }: { title: string, description: string, icon: React.ComponentType<LucideProps>, color: 'red' | 'amber' | 'blue' }) {
   const colors = {
     red: 'bg-red-50 text-red-600 border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20',
     amber: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',

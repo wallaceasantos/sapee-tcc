@@ -31,48 +31,46 @@ print("=" * 60)
 with Session(engine) as db:
     # Buscar todos os alunos
     alunos = db.query(models.Aluno).all()
-    
+
     print(f"\n📊 Total de alunos: {len(alunos)}")
     print("\n♻️  Recalculando predições...\n")
-    
+
     atualizados = 0
     erros = 0
-    
+
     for aluno in alunos:
         try:
             # Calcular nova predição com fallback melhorado
             resultado = fallback_logic(aluno, db=db)
-            
+
             # Deletar predição antiga
-            db.query(models.Predicao).filter(
-                models.Predicao.aluno_id == aluno.matricula
-            ).delete()
-            
+            db.query(models.Predicao).filter(models.Predicao.aluno_id == aluno.matricula).delete()
+
             # Criar nova predição
             nova_predicao = models.Predicao(
                 aluno_id=aluno.matricula,
-                risco_evasao=resultado['risco_evasao'],
-                nivel_risco=resultado['nivel_risco'],
-                fatores_principais=resultado['fatores_principais'],
-                modelo_ml_versao='2.0.0-fallback'
+                risco_evasao=resultado["risco_evasao"],
+                nivel_risco=resultado["nivel_risco"],
+                fatores_principais=resultado["fatores_principais"],
+                modelo_ml_versao="2.0.0-fallback",
             )
-            
+
             db.add(nova_predicao)
             db.commit()
-            
+
             atualizados += 1
-            
+
             # Mostrar resumo
             print(f"✅ {aluno.matricula} - {aluno.nome}")
             print(f"   Risco: {resultado['risco_evasao']:.1f}% - {resultado['nivel_risco']}")
             print(f"   Fatores: {resultado['fatores_principais'][:80]}...")
             print()
-            
+
         except Exception as e:
             print(f"❌ {aluno.matricula} - {aluno.nome}: {str(e)}")
             erros += 1
             db.rollback()
-    
+
     print("=" * 60)
     print("✅ RECALCULO CONCLUÍDO!")
     print("=" * 60)

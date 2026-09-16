@@ -3,74 +3,74 @@ Serviço de Notificação via Telegram
 SAPEE DEWAS Backend
 """
 
-import requests
+import logging
 import os
-from dotenv import load_dotenv
 from datetime import datetime
 
-# Carregar variáveis de ambiente
+import requests
+from dotenv import load_dotenv
+
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
 
 class TelegramNotifier:
     """Envia notificações para Telegram"""
-    
+
     def __init__(self):
-        self.bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-        self.chat_id = os.getenv('TELEGRAM_CHAT_ID')
-        self.enabled = os.getenv('TELEGRAM_ENABLED', 'False').lower() == 'true'
-        
-    def enviar_mensagem(self, mensagem: str, parse_mode: str = 'HTML') -> bool:
+        self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        self.chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        self.enabled = os.getenv("TELEGRAM_ENABLED", "False").lower() == "true"
+
+    def enviar_mensagem(self, mensagem: str, parse_mode: str = "HTML") -> bool:
         """
         Envia mensagem para o chat do Telegram
-        
+
         Args:
             mensagem: Texto da mensagem (suporta HTML)
             parse_mode: 'HTML' ou 'Markdown'
-            
+
         Returns:
             bool: True se enviado com sucesso
         """
         if not self.enabled:
-            print(f"⚠️  Telegram desabilitado: {mensagem}")
+            logger.debug("Telegram desabilitado: %s", mensagem)
             return False
-            
+
         if not self.bot_token or not self.chat_id:
-            print(f"❌ Token ou Chat ID não configurados")
+            logger.warning("Token ou Chat ID não configurados")
             return False
-        
+
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
-        
-        data = {
-            'chat_id': self.chat_id,
-            'text': mensagem,
-            'parse_mode': parse_mode
-        }
-        
+
+        data = {"chat_id": self.chat_id, "text": mensagem, "parse_mode": parse_mode}
+
         try:
             response = requests.post(url, json=data, timeout=10)
-            
+
             if response.status_code == 200:
-                print(f"✅ Notificação enviada: {mensagem[:50]}...")
+                logger.info("Notificação enviada: %s...", mensagem[:50])
                 return True
             else:
-                print(f"❌ Erro ao enviar: {response.status_code} - {response.text}")
+                logger.error("Erro ao enviar: %s - %s", response.status_code, response.text)
                 return False
-                
+
         except Exception as e:
-            print(f"❌ Exceção ao enviar: {str(e)}")
+            logger.error("Exceção ao enviar: %s", e)
             return False
-    
+
     def enviar_alerta_frequencia(self, aluno: dict, queda_percentual: float) -> bool:
         """
         Envia alerta de queda brusca de frequência
-        
+
         Args:
             aluno: Dados do aluno (nome, matricula, frequencia_atual, frequencia_anterior)
             queda_percentual: Porcentagem de queda (ex: 15.5)
         """
         emoji = "🚨" if queda_percentual > 15 else "⚠️"
         nivel = "CRÍTICO" if queda_percentual > 15 else "ALTO"
-        
+
         mensagem = f"""
 {emoji} <b>ALERTA DE FREQUÊNCIA - {nivel}</b>
 
@@ -89,13 +89,13 @@ class TelegramNotifier:
 
 <b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}
         """.strip()
-        
+
         return self.enviar_mensagem(mensagem)
-    
+
     def enviar_alerta_media(self, aluno: dict, media: float, meses: int) -> bool:
         """
         Envia alerta de média baixa
-        
+
         Args:
             aluno: Dados do aluno
             media: Média atual do aluno
@@ -103,7 +103,7 @@ class TelegramNotifier:
         """
         emoji = "🚨" if media < 4.0 else "⚠️"
         nivel = "CRÍTICO" if media < 4.0 else "ALTO"
-        
+
         mensagem = f"""
 {emoji} <b>ALERTA DE DESEMPENHO - {nivel}</b>
 
@@ -121,20 +121,20 @@ class TelegramNotifier:
 
 <b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}
         """.strip()
-        
+
         return self.enviar_mensagem(mensagem)
-    
+
     def enviar_alerta_faltas_seguidas(self, aluno: dict, faltas: int) -> bool:
         """
         Envia alerta de faltas consecutivas
-        
+
         Args:
             aluno: Dados do aluno
             faltas: Número de faltas consecutivas
         """
         emoji = "⚠️"
         nivel = "MÉDIO"
-        
+
         mensagem = f"""
 {emoji} <b>ALERTA DE FALTAS - {nivel}</b>
 
@@ -151,7 +151,7 @@ class TelegramNotifier:
 
 <b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}
         """.strip()
-        
+
         return self.enviar_mensagem(mensagem)
 
     def gerar_mensagem_faltas_seguidas(self, aluno: dict, faltas: int) -> str:
@@ -177,14 +177,14 @@ class TelegramNotifier:
     def enviar_alerta_risco_evasao(self, aluno: dict, risco: float, nivel: str) -> bool:
         """
         Envia alerta de risco de evasão
-        
+
         Args:
             aluno: Dados do aluno
             risco: Score de risco (0-100)
             nivel: Nível do risco (BAIXO, MEDIO, ALTO, CRITICO)
         """
         emoji = "🚨" if nivel == "CRITICO" else "⚠️" if nivel == "ALTO" else "⚠️"
-        
+
         mensagem = f"""
 {emoji} <b>ALERTA DE RISCO DE EVASÃO - {nivel}</b>
 
@@ -204,7 +204,7 @@ class TelegramNotifier:
 
 <b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}
         """.strip()
-        
+
         return self.enviar_mensagem(mensagem)
 
 

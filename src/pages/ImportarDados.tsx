@@ -1,12 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, CheckCircle2, AlertCircle, Download, Trash2, ArrowRight, Loader2, History, User as UserIcon, Calendar as CalendarIcon } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Download, Trash2, ArrowRight, Loader2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { cn } from '../utils';
 import { logAction } from '../services/logService';
 import { useToast } from '../components/ui/Toast';
 import api from '../services/api';
-import { useAuth } from '../services/AuthContext';
 
 interface ImportRow {
   id: string;
@@ -18,30 +17,15 @@ interface ImportRow {
   errors: string[];
 }
 
-interface ImportHistory {
-  id: string;
-  arquivo: string;
-  data: string;
-  registros: number;
-  usuario: string;
-  status: 'success' | 'partial';
-}
-
-const MOCK_HISTORY: ImportHistory[] = [
-  { id: '1', arquivo: 'alunos_2024_1.csv', data: '2024-03-05 14:30', registros: 150, usuario: 'Coord. João', status: 'success' },
-  { id: '2', arquivo: 'notas_informatica_mar.csv', data: '2024-03-01 09:15', registros: 45, usuario: 'Prof. Maria', status: 'success' },
-  { id: '3', arquivo: 'frequencia_geral.csv', data: '2024-02-25 16:45', registros: 1200, usuario: 'Coord. João', status: 'partial' },
-];
-
 export default function ImportarDados() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewData, setPreviewData] = useState<ImportRow[]>([]);
   const [isImported, setIsImported] = useState(false);
+  const [progress, setProgress] = useState<{ processados: number; total: number; importados: number; erros: number; status: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -78,10 +62,17 @@ export default function ImportarDados() {
     reader.onload = (event) => {
       const text = event.target?.result as string;
       const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      
+      // Auto-detectar delimitador: verifica qual aparece mais na primeira linha
+      const firstLine = lines[0];
+      const commaCount = (firstLine.match(/,/g) || []).length;
+      const semicolonCount = (firstLine.match(/;/g) || []).length;
+      const delimiter = semicolonCount > commaCount ? ';' : ',';
+      
+      const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
       
       // Validar se é o template correto
-      const requiredFields = ['matricula', 'nome', 'curso', 'mediageral', 'frequencia'];
+      const requiredFields = ['matricula', 'nome', 'curso', 'media_geral', 'frequencia'];
       const missingFields = requiredFields.filter(field => !headers.includes(field));
       
       if (missingFields.length > 0) {
@@ -98,8 +89,9 @@ export default function ImportarDados() {
       const mockPreview: ImportRow[] = [];
       
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        const row: any = {};
+        const values = lines[i].split(delimiter).map(v => v.trim());
+        if (values.length < 2 || values.every(v => !v)) continue;
+        const row: Record<string, string> = {};
         
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -203,72 +195,86 @@ export default function ImportarDados() {
 
   const handleConfirmImport = async () => {
     setIsProcessing(true);
+    setProgress(null);
     const fileName = file?.name || 'arquivo_desconhecido';
     const recordCount = previewData.length;
 
     try {
-      // Simular importação (aqui entraria a chamada real da API)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      logAction('Importação de Dados', `Arquivo: ${fileName} | Registros: ${recordCount}`);
-      
-      // ============================================
-      // GERAR PREDIÇÕES AUTOMATICAMENTE APÓS IMPORTAR
-      // ============================================
       const token = localStorage.getItem('sapee_token');
-      
-      if (token) {
+      if (!token) throw new Error('Token de autenticacao nao encontrado');
+
+      const resultado = await api.alunos.importCSV(token, file!);
+      const jobId = resultado?.job_id;
+
+      if (!jobId) {
+        // Modo antigo - backend nao foi reiniciado, aguarda resposta sincrona
+        setIsProcessing(false);
+        const importados = resultado?.alunos_importados || recordCount;
+        logAction('Importacao de Dados', `Arquivo: ${fileName} | Importados: ${importados}`);
+        setIsImported(true);
+        setPreviewData([]);
+        setFile(null);
         addToast({
-          type: 'info',
-          title: 'Gerando predições...',
-          message: 'Aguarde, gerando predições para os alunos importados.',
+          type: importados > 0 ? 'success' : 'warning',
+          title: 'Importacao concluida',
+          message: `${importados} alunos importados. Reinicie o backend (uvicorn) para ver a barra de progresso.`,
         });
-        
-        try {
-          const resultado = await api.predicoes.gerarTodas(token);
-          
-          addToast({
-            type: 'success',
-            title: 'Importação concluída!',
-            message: `${recordCount} alunos importados. ${resultado.alunos_processados} predições geradas.`,
-          });
-          
-          logAction('Geração de Predições', `Após importação: ${resultado.alunos_processados} predições geradas`);
-          
-        } catch (error) {
-          console.error('Erro ao gerar predições:', error);
-          addToast({
-            type: 'warning',
-            title: 'Importação concluída',
-            message: 'Alunos importados, mas será necessário gerar predições manualmente.',
-          });
-        }
+        return;
       }
-      
-      setIsProcessing(false);
-      setIsImported(true);
-      setPreviewData([]);
-      setFile(null);
-      
+
+      // Poll progress
+      const pollInterval = setInterval(async () => {
+        try {
+          const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const resp = await fetch(`${API}/alunos/importar-csv/progress/${jobId}`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+          if (resp.ok) {
+            const p = await resp.json();
+            setProgress(p);
+            if (p.status === 'concluido' || p.status === 'erro') {
+              clearInterval(pollInterval);
+              setIsProcessing(false);
+              if (p.status === 'concluido') {
+                logAction('Importacao de Dados', `Arquivo: ${fileName} | Importados: ${p.importados} | Erros: ${p.erros}`);
+                setIsImported(true);
+                setPreviewData([]);
+                setFile(null);
+                addToast({
+                  type: p.importados > 0 ? 'success' : 'warning',
+                  title: 'Importacao concluida',
+                  message: `${p.importados} alunos importados, ${p.erros} erros, ${p.predicoes || 0} predicoes.`,
+                });
+              } else {
+                addToast({ type: 'error', title: 'Erro na importacao', message: p.mensagem || 'Erro desconhecido' });
+              }
+            }
+          }
+        } catch { /* ignora erro de poll */ }
+      }, 1500);
+
     } catch (error) {
-      console.error('Erro na importação:', error);
-      addToast({
-        type: 'error',
-        title: 'Erro na importação',
-        message: 'Ocorreu um erro ao importar os dados.',
-      });
+      console.error('Erro na importacao:', error);
+      addToast({ type: 'error', title: 'Erro na importacao', message: error instanceof Error ? error.message : 'Ocorreu um erro.' });
       setIsProcessing(false);
     }
   };
 
   const downloadTemplate = () => {
-    // Template completo com todos os campos do cadastro
-    const headers = 'matricula,nome,email,telefone,dataNascimento,sexo,curso,periodo,turno,mediaGeral,frequencia,rendaFamiliar,rendaPerCapita,cidade,cep,logradouro,numero,complemento,bairro,zonaResidencial,possuiAuxilio,trabalha,cargaHorariaTrabalho,historicoReprovas,coeficienteRendimento,anoIngresso,tempoDeslocamento,custoTransporteDiario,dificuldadeAcesso,possuiComputador,possuiInternet,transporteUtilizado,beneficiarioBolsaFamilia,primeiroGeracaoUniversidade\n';
-    
-    // Exemplo de dados
-    const exemplo = '2024101001,João da Silva,joao.silva@email.com,(92) 99999-9999,2005-03-15,M,Informática,3,MATUTINO,7.5,85,2500,625,Manaus,69000-000,Av. Djalma Batista,123,Apto 101,Santa Etelvina,ZONA_NORTE,False,True,20,1,8,2023,90,17.6,MEDIA,True,True,ONIBUS,False,True\n';
-    
-    const blob = new Blob([headers + exemplo], { type: 'text/csv' });
+    const separator = ';';
+    const lineEnd = '\r\n';
+
+    // BOM para Excel reconhecer UTF-8
+    const BOM = '\uFEFF';
+
+    // Template completo com todos os campos do cadastro (snake_case = formato do backend)
+    const headers = 'matricula;nome;email;telefone;data_nascimento;idade;sexo;curso;periodo;turno;media_geral;frequencia;renda_familiar;renda_per_capita;cidade;cep;logradouro;numero;complemento;bairro;zona_residencial;possui_auxilio;tipo_auxilio;trabalha;carga_horaria_trabalho;historico_reprovas;coeficiente_rendimento;ano_ingresso;tempo_deslocamento;custo_transporte_diario;dificuldade_acesso;possui_computador;possui_internet;transporte_utilizado;usa_transporte_alternativo;beneficiario_bolsa_familia;primeiro_geracao_universidade';
+
+    // Exemplo de dados (valores que serao lidos pelo backend)
+    const exemplo = '2024101001;Joao da Silva;joao.silva@email.com;(92) 99999-9999;2005-03-15;19;M;Informatica;3;MATUTINO;7.5;85;2500;625;Manaus;69000-000;Av. Djalma Batista;123;Apto 101;Santa Etelvina;ZONA_NORTE;False;BOLSA_MONITORIA;True;20;1;8;2023;90;17.6;MEDIA;True;True;ONIBUS;False;False;True';
+
+    const csvContent = BOM + headers + lineEnd + exemplo + lineEnd;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -395,10 +401,14 @@ export default function ImportarDados() {
               </button>
               <button
                 onClick={handleConfirmImport}
-                disabled={previewData.some(r => r.status === 'error')}
+                disabled={isProcessing || previewData.some(r => r.status === 'error')}
                 className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl text-sm hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Confirmar Importação <ArrowRight className="w-4 h-4" />
+                {isProcessing ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Importando...</>
+                ) : (
+                  <>Confirmar Importação <ArrowRight className="w-4 h-4" /></>
+                )}
               </button>
             </div>
           </div>
@@ -479,6 +489,37 @@ export default function ImportarDados() {
         </motion.div>
       )}
 
+      {progress && progress.status === 'processando' && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white dark:bg-slate-900 rounded-2xl border border-blue-200 dark:border-blue-800 p-6 space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+              <span className="font-bold text-gray-900 dark:text-white">
+                Importando dados...
+              </span>
+            </div>
+            <span className="text-sm text-gray-500">
+              {progress.processados} / {progress.total}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+              style={{ width: `${Math.round((progress.processados / progress.total) * 100)}%` }}
+            />
+          </div>
+          <div className="flex gap-6 text-xs text-gray-500">
+            <span className="text-green-600 font-bold">{progress.importados} importados</span>
+            {progress.erros > 0 && <span className="text-red-500 font-bold">{progress.erros} erros</span>}
+            {(progress as any).predicoes > 0 && <span className="text-indigo-500 font-bold">{(progress as any).predicoes} predicoes</span>}
+          </div>
+        </motion.div>
+      )}
+
       {isImported && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -511,77 +552,6 @@ export default function ImportarDados() {
         </motion.div>
       )}
 
-      {/* Histórico de Importações */}
-      {!previewData.length && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-6 pt-8 border-t border-gray-100 dark:border-slate-700"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <History className="w-5 h-5 text-gray-400 dark:text-slate-500" />
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Histórico de Importações</h3>
-            </div>
-            <button className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">Ver tudo</button>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Arquivo</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Data / Hora</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Registros</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Responsável</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                {MOCK_HISTORY.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gray-100 dark:bg-slate-800 rounded-lg">
-                          <FileText className="w-4 h-4 text-gray-500 dark:text-slate-400" />
-                        </div>
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{item.arquivo}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
-                        <CalendarIcon className="w-3.5 h-3.5" />
-                        {item.data}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300 font-medium">{item.registros}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
-                        <UserIcon className="w-3.5 h-3.5" />
-                        {item.usuario}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={cn(
-                        "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                        item.status === 'success' ? "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400" : "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
-                      )}>
-                        {item.status === 'success' ? 'Concluído' : 'Parcial'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button className="p-2 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Baixar log de erros">
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 }

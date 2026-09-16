@@ -17,16 +17,19 @@ import os
 load_dotenv()
 
 # Configuração do banco de dados
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:S%40nx5497@localhost:3306/sapee_dewas")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "mysql+pymysql://root:S%40nx5497@localhost:3306/sapee_dewas"
+)
+
 
 def criar_tabela_questionario():
     """Cria a tabela questionario_psicossocial no banco de dados"""
-    
+
     print("=" * 80)
     print("🧠 CRIAÇÃO DA TABELA - QUESTIONÁRIO PSICOSSOCIAL")
     print("=" * 80)
     print()
-    
+
     try:
         # Conectar ao banco
         print(f"📡 Conectando ao banco de dados...")
@@ -34,7 +37,7 @@ def criar_tabela_questionario():
         conn = engine.connect()
         print("✅ Conexão estabelecida com sucesso!")
         print()
-        
+
         # SQL de criação da tabela
         sql_criar_tabela = """
         CREATE TABLE IF NOT EXISTS questionario_psicossocial (
@@ -128,14 +131,14 @@ def criar_tabela_questionario():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         COMMENT='Questionário psicossocial para avaliação de risco de evasão escolar';
         """
-        
+
         # Executar criação
         print("📝 Executando SQL de criação da tabela...")
         conn.execute(text(sql_criar_tabela))
         conn.commit()
         print("✅ Tabela criada com sucesso!")
         print()
-        
+
         # Verificar se foi criada
         print("🔍 Verificando tabela criada...")
         result = conn.execute(text("""
@@ -144,17 +147,17 @@ def criar_tabela_questionario():
             WHERE table_schema = DATABASE()
             AND table_name = 'questionario_psicossocial'
         """))
-        
+
         total = result.fetchone()[0]
-        
+
         if total > 0:
             print("✅ Tabela questionario_psicossocial confirmada no banco!")
-            
+
             # Mostrar estrutura
             print()
             print("📋 ESTRUTURA DA TABELA:")
             print("-" * 80)
-            
+
             result = conn.execute(text("""
                 SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, 
                        COLUMN_COMMENT, IS_NULLABLE
@@ -163,10 +166,10 @@ def criar_tabela_questionario():
                 AND TABLE_NAME = 'questionario_psicossocial'
                 ORDER BY ORDINAL_POSITION
             """))
-            
+
             print(f"{'Coluna':<35} {'Tipo':<20} {'Nullable':<10}")
             print("-" * 80)
-            
+
             for row in result:
                 coluna = row[0]
                 tipo = row[1]
@@ -174,10 +177,10 @@ def criar_tabela_questionario():
                     tipo += f"({row[2]})"
                 nullable = "NULL" if row[4] == "YES" else "NOT NULL"
                 print(f"{coluna:<35} {tipo:<20} {nullable:<10}")
-            
+
             print("-" * 80)
             print()
-            
+
             # Contar total de colunas
             result = conn.execute(text("""
                 SELECT COUNT(*) as total
@@ -185,14 +188,14 @@ def criar_tabela_questionario():
                 WHERE TABLE_SCHEMA = DATABASE()
                 AND TABLE_NAME = 'questionario_psicossocial'
             """))
-            
+
             total_colunas = result.fetchone()[0]
             print(f"📊 Total de colunas: {total_colunas}")
-            
+
         else:
             print("❌ ERRO: Tabela não foi encontrada após criação!")
             return False
-        
+
         conn.close()
         print()
         print("=" * 80)
@@ -205,9 +208,9 @@ def criar_tabela_questionario():
         print("   3. Implementar frontend do questionário")
         print("   4. Integrar com modelo de predição de risco")
         print()
-        
+
         return True
-        
+
     except Exception as e:
         print()
         print("=" * 80)
@@ -220,20 +223,20 @@ def criar_tabela_questionario():
 
 def adicionar_colunas_questionario_aluno():
     """Adiciona colunas na tabela de alunos para controle do questionário"""
-    
+
     print()
     print("=" * 80)
     print("📝 ADICIONANDO COLUNAS DE CONTROLE NA TABELA ALUNOS")
     print("=" * 80)
     print()
-    
+
     try:
         engine = create_engine(DATABASE_URL)
         conn = engine.connect()
-        
+
         # Coluna para controlar se aluno já respondeu
         print("📡 Adicionando coluna questionario_respondido...")
-        
+
         try:
             conn.execute(text("""
                 ALTER TABLE alunos 
@@ -247,10 +250,10 @@ def adicionar_colunas_questionario_aluno():
                 print("⚠️ Coluna questionario_respondido já existe!")
             else:
                 raise e
-        
+
         # Coluna para data da última resposta
         print("📡 Adicionando coluna data_ultimo_questionario...")
-        
+
         try:
             conn.execute(text("""
                 ALTER TABLE alunos 
@@ -264,10 +267,10 @@ def adicionar_colunas_questionario_aluno():
                 print("⚠️ Coluna data_ultimo_questionario já existe!")
             else:
                 raise e
-        
+
         # Índice para filtrar alunos que não responderam
         print("📡 Criando índice para questionário...")
-        
+
         try:
             conn.execute(text("""
                 CREATE INDEX idx_questionario_respondido 
@@ -280,14 +283,14 @@ def adicionar_colunas_questionario_aluno():
                 print("⚠️ Índice já existe!")
             else:
                 raise e
-        
+
         conn.close()
         print()
         print("✅ COLUNAS ADICIONADAS COM SUCESSO!")
         print()
-        
+
         return True
-        
+
     except Exception as e:
         print()
         print(f"❌ ERRO: {str(e)}")
@@ -297,13 +300,13 @@ def adicionar_colunas_questionario_aluno():
 
 if __name__ == "__main__":
     print()
-    
+
     # Criar tabela principal
     sucesso_tabela = criar_tabela_questionario()
-    
+
     # Adicionar colunas de controle
     sucesso_colunas = adicionar_colunas_questionario_aluno()
-    
+
     if sucesso_tabela and sucesso_colunas:
         print("🎉 TODOS OS SCRIPTS EXECUTADOS COM SUCESSO!")
         print()

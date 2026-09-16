@@ -166,7 +166,7 @@ export interface UseAlunoFormReturn {
   formatCurrency: (value: number) => string;
   parseCurrency: (value: string) => number;
   resetForm: () => void;
-  setEditingData: (aluno: any) => void;
+  setEditingData: (aluno: Partial<AlunoFormData>) => void;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   calcularRiscoPreview: (dados: Partial<AlunoFormData>) => void;
 }
@@ -285,7 +285,7 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<AlunoFormData>(initialFormData);
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [predicaoPreview, setPredicaoPreview] = useState<UseAlunoFormReturn['predicaoPreview']>(null);
 
@@ -309,6 +309,29 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
     e: React.FocusEvent<HTMLInputElement>
   ) => {
     e.target.select();
+  }, []);
+
+  // Função para parsear valores monetários no formato brasileiro
+  // Aceita: "1.500,00" ou "1500,00" ou "1500"
+  const parseCurrency = useCallback((value: string): number => {
+    if (value === '') return 0;
+
+    // Remove tudo que não for dígito, vírgula ou ponto
+    const cleaned = value.replace(/[^0-9,.]/g, '');
+
+    // Se tiver vírgula, substitui por ponto (formato brasileiro)
+    const normalized = cleaned.replace(',', '.');
+
+    // Remove pontos de milhar (último ponto antes da vírgula)
+    const parts = normalized.split('.');
+    if (parts.length > 2) {
+      // Tem múltiplos pontos - remove todos exceto o último (decimal)
+      const lastPart = parts.pop();
+      const withoutThousands = parts.join('');
+      return parseFloat(withoutThousands + '.' + lastPart) || 0;
+    }
+
+    return parseFloat(normalized) || 0;
   }, []);
 
   // Handler para inputs normais
@@ -382,7 +405,7 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
           ? (e.target as HTMLInputElement).checked
           : value,
     }));
-  }, []);
+  }, [formData.ano_ingresso, parseCurrency]);
 
   // Handler específico para campos monetários com formatação
   const handleCurrencyChange = useCallback((
@@ -406,29 +429,6 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
   const formatCurrency = useCallback((value: number): string => {
     if (value === 0) return '';
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }, []);
-
-  // Função para parsear valores monetários no formato brasileiro
-  // Aceita: "1.500,00" ou "1500,00" ou "1500"
-  const parseCurrency = useCallback((value: string): number => {
-    if (value === '') return 0;
-
-    // Remove tudo que não for dígito, vírgula ou ponto
-    const cleaned = value.replace(/[^0-9,.]/g, '');
-
-    // Se tiver vírgula, substitui por ponto (formato brasileiro)
-    const normalized = cleaned.replace(',', '.');
-
-    // Remove pontos de milhar (último ponto antes da vírgula)
-    const parts = normalized.split('.');
-    if (parts.length > 2) {
-      // Tem múltiplos pontos - remove todos exceto o último (decimal)
-      const lastPart = parts.pop();
-      const withoutThousands = parts.join('');
-      return parseFloat(withoutThousands + '.' + lastPart) || 0;
-    }
-
-    return parseFloat(normalized) || 0;
   }, []);
 
   // Handler para checkboxes
@@ -462,7 +462,7 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
 
   // Setar dados para edição
   // Handler específico para carregar dados de edição
-  const setEditingData = useCallback((aluno: any) => {
+  const setEditingData = useCallback((aluno: Partial<AlunoFormData>) => {
     // Lógica de Sincronização: A matrícula manda mais que o ano salvo
     let anoFinal = aluno.ano_ingresso;
     if (aluno.matricula) {
@@ -491,7 +491,7 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
       frequencia: aluno.frequencia || 100,
       historico_reprovas: aluno.historico_reprovas || 0,
       coeficiente_rendimento: aluno.coeficiente_rendimento || 0,
-      ano_ingresso: anoFinal,
+      ano_ingresso: anoFinal ?? 0,
       cidade: aluno.cidade || '',
       cep: aluno.cep || '',
       logradouro: aluno.logradouro || '',
@@ -572,11 +572,9 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
         return;
       }
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      console.log('🔵 Tentando salvar aluno na URL:', API_URL);
+      const API_URL = import.meta.env.VITE_API_URL || '';
       
-      // Preparar dados para envio (limpar telefones e converter strings vazias para null)
-      const cleanValue = (val: any) => {
+      const cleanValue = (val: unknown) => {
         if (val === '' || val === undefined) return null;
         return val;
       };
@@ -597,18 +595,7 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
         tipo_auxilio: formData.tipo_auxilio || '[]',
       };
       
-      console.log('🔵 Dados do aluno:', JSON.stringify(dadosParaEnvio, null, 2));
-
-      // Verificar campos obrigatórios
-      console.log('🔵 Verificando campos obrigatórios:');
-      console.log('  - matricula:', dadosParaEnvio.matricula);
-      console.log('  - nome:', dadosParaEnvio.nome);
-      console.log('  - curso_id:', dadosParaEnvio.curso_id);
-      console.log('  - tipo_auxilio:', dadosParaEnvio.tipo_auxilio);
-
       if (isEditing) {
-        // ATUALIZAR aluno existente
-        console.log('🔵 Atualizando aluno:', dadosParaEnvio.matricula);
         await api.alunos.update(token, dadosParaEnvio.matricula, dadosParaEnvio);
         
         addToast({
@@ -617,8 +604,6 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
           message: 'Cadastro atualizado com sucesso. Predição recalculada automaticamente.',
         });
       } else {
-        // CRIAR novo aluno
-        console.log('🔵 Criando novo aluno');
         await api.alunos.create(token, dadosParaEnvio);
         
         addToast({
@@ -659,7 +644,7 @@ export function useAlunoForm(onSuccess?: () => void): UseAlunoFormReturn {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, isEditing, onSuccess, addToast, resetForm]);
+  }, [formData, isEditing, onSuccess, addToast, resetForm, navigate]);
 
   return {
     formData,

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, UserPlus, Edit, Lock, Unlock, Key, Trash2, Filter, Users, CheckCircle, XCircle, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, UserPlus, Edit, Lock, Unlock, Trash2, Filter, Users, CheckCircle, XCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth, Role, User as UserType } from '../services/AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -18,9 +18,8 @@ interface UsuarioFormData {
 
 export default function Usuarios() {
   const { addToast } = useToast();
-  const { user: currentUser, token } = useAuth();
+  const { token } = useAuth();
   const [usuarios, setUsuarios] = useState<UserType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroRole, setFiltroRole] = useState<string>('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
@@ -30,34 +29,37 @@ export default function Usuarios() {
   const [userParaExcluir, setUserParaExcluir] = useState<number | null>(null);
 
   // Carregar usuários da API
-  useEffect(() => {
-    carregarUsuarios();
-  }, []);
-
-  const carregarUsuarios = async () => {
+  const carregarUsuarios = useCallback(async () => {
     try {
-      setIsLoading(true);
       const data = await api.usuarios.list(token || '', 0, 1000);
       
       // Normalizar dados - role pode vir como objeto ou string
-      const normalizedData = data.map((u: any) => ({
-        ...u,
-        role: typeof u.role === 'object' && u.role?.nome ? u.role.nome : u.role,
-        curso_nome: u.curso?.nome || u.curso_nome,
-      }));
+      const normalizedData = data.map((u: unknown) => {
+        const usuario = u as Record<string, unknown>;
+        const role = usuario.role;
+        return {
+          ...usuario,
+          role: typeof role === 'object' && role !== null && 'nome' in (role as Record<string, unknown>)
+            ? (role as Record<string, unknown>).nome
+            : role,
+          curso_nome: (usuario.curso as Record<string, unknown> | undefined)?.nome || usuario.curso_nome,
+        };
+      });
       
-      setUsuarios(normalizedData);
-    } catch (error: any) {
+      setUsuarios(normalizedData as UserType[]);
+    } catch (error: unknown) {
       console.error('Erro ao carregar usuários:', error);
       addToast({
         type: 'error',
         title: 'Erro ao carregar',
-        message: error.message || 'Não foi possível carregar os usuários',
+        message: error instanceof Error ? error.message : 'Não foi possível carregar os usuários',
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [token, addToast]);
+
+  useEffect(() => {
+    carregarUsuarios();
+  }, [carregarUsuarios]);
 
   const filteredUsers = usuarios.filter(usuario => {
     const matchesSearch = usuario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -114,12 +116,12 @@ export default function Usuarios() {
       setIsModalOpen(false);
       setEditingUser(null);
       await carregarUsuarios();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao salvar usuário:', error);
       addToast({
         type: 'error',
         title: 'Erro ao salvar',
-        message: error.message || 'Não foi possível salvar o usuário',
+        message: error instanceof Error ? error.message : 'Não foi possível salvar o usuário',
       });
     }
   };
@@ -133,12 +135,12 @@ export default function Usuarios() {
         message: `Status de ${usuario.nome} foi alterado.`,
       });
       await carregarUsuarios();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao alterar status:', error);
       addToast({
         type: 'error',
         title: 'Erro ao alterar status',
-        message: error.message || 'Não foi possível alterar o status',
+        message: error instanceof Error ? error.message : 'Não foi possível alterar o status',
       });
     }
   };
@@ -155,12 +157,12 @@ export default function Usuarios() {
         setShowDeleteModal(false);
         setUserParaExcluir(null);
         await carregarUsuarios();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Erro ao excluir usuário:', error);
         addToast({
           type: 'error',
           title: 'Erro ao excluir',
-          message: error.message || 'Não foi possível excluir o usuário',
+          message: error instanceof Error ? error.message : 'Não foi possível excluir o usuário',
         });
       }
     }
@@ -172,6 +174,7 @@ export default function Usuarios() {
       COORDENADOR: 2,
       PEDAGOGO: 3,
       DIRETOR: 4,
+      PROFESSOR: 5,
     };
     return roleMap[role] || 1;
   };
@@ -317,7 +320,7 @@ export default function Usuarios() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase", roleColors[usuario.role])}>
+                      <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase", roleColors[usuario.role as keyof typeof roleColors])}>
                         {usuario.role}
                       </span>
                     </td>
@@ -336,8 +339,8 @@ export default function Usuarios() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300">
-                      {(usuario as any).ultimo_acesso
-                        ? new Date((usuario as any).ultimo_acesso).toLocaleString('pt-BR')
+                      {((usuario as unknown) as Record<string, unknown>).ultimo_acesso
+                        ? new Date(((usuario as unknown) as Record<string, unknown>).ultimo_acesso as string).toLocaleString('pt-BR')
                         : 'Nunca acessou'}
                     </td>
                     <td className="px-6 py-4">
@@ -387,7 +390,6 @@ export default function Usuarios() {
       {/* Modal de Usuário */}
       {isModalOpen && (
         <UsuarioModal
-          isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
             setEditingUser(null);
@@ -414,14 +416,12 @@ export default function Usuarios() {
 
 // Modal de Cadastro/Edição de Usuário
 function UsuarioModal({
-  isOpen,
   onClose,
   onSave,
   usuario,
 }: {
-  isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: UsuarioFormData) => void;
   usuario?: UserType;
 }) {
   const [formData, setFormData] = useState({

@@ -8,7 +8,7 @@
  * - Integração com a tabela de cursos existente
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Save, X, BookOpen, BookMarked, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
@@ -49,33 +49,33 @@ export default function Disciplinas() {
   const [filtroCurso, setFiltroCurso] = useState<string>('todos'); // 'todos', 'genericas', ou ID do curso
   const [filtroAtivas, setFiltroAtivas] = useState<'ativas' | 'inativas' | 'todas'>('ativas');
 
-  useEffect(() => {
-    loadDisciplinas();
-    loadCursos();
-  }, [token]);
-
-  const loadDisciplinas = async () => {
+  const loadDisciplinas = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
       const data = await api.disciplinas.list(token, false); // Busca todas (ativas e inativas)
       setDisciplinas(data);
-    } catch (error: any) {
+    } catch {
       addToast({ type: 'error', title: 'Erro', message: 'Não foi possível carregar as disciplinas' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, addToast]);
 
-  const loadCursos = async () => {
+  const loadCursos = useCallback(async () => {
     if (!token) return;
     try {
       const data = await api.cursos.list(token);
       setCursos(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao carregar cursos:', error);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    loadDisciplinas();
+    loadCursos();
+  }, [loadDisciplinas, loadCursos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,8 +111,8 @@ export default function Disciplinas() {
       
       resetForm();
       loadDisciplinas();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message || 'Erro ao salvar disciplina' });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao salvar disciplina' });
     }
   };
 
@@ -139,8 +139,8 @@ export default function Disciplinas() {
       await api.disciplinas.delete(token, id);
       addToast({ type: 'success', title: 'Excluído', message: 'Disciplina removida com sucesso' });
       loadDisciplinas();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message || 'Erro ao excluir disciplina' });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao excluir disciplina' });
     }
   };
 
@@ -154,7 +154,7 @@ export default function Disciplinas() {
         message: `Disciplina ${disc.ativa ? 'desativada' : 'ativada'} com sucesso` 
       });
       loadDisciplinas();
-    } catch (error: any) {
+    } catch {
       addToast({ type: 'error', title: 'Erro', message: 'Erro ao alterar status' });
     }
   };
@@ -264,7 +264,7 @@ export default function Disciplinas() {
             </label>
             <select
               value={filtroAtivas}
-              onChange={(e) => setFiltroAtivas(e.target.value as any)}
+              onChange={(e) => setFiltroAtivas(e.target.value as 'ativas' | 'inativas' | 'todas')}
               className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             >
               <option value="ativas">Ativas</option>

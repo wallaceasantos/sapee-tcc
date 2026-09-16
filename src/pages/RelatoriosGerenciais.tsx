@@ -7,8 +7,8 @@
  * - Relatório de Eficácia de Intervenções
  */
 
-import React, { useState, useEffect } from 'react';
-import { FileSpreadsheet, FileText, Download, AlertTriangle, Map, BarChart3, TrendingUp, Activity, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FileSpreadsheet, FileText, AlertTriangle, Map, BarChart3, TrendingUp, Activity } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../utils';
 import ResponsiveTable from '../components/ResponsiveTable';
@@ -19,12 +19,36 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
 
+interface AlunoRisco {
+  id?: number | string;
+  matricula: string;
+  nome: string;
+  curso: string;
+  turno?: string;
+  nivel_risco: string;
+  score_risco: number;
+  fatores?: string;
+  ultima_predicao: string;
+}
+
+interface MapaCalor {
+  zona: string;
+  total_alunos: number;
+  media_risco: number;
+}
+
+interface EficaciaIntervencao {
+  id_intervencao: number;
+  aluno: string;
+  matricula: string;
+  tipo_intervencao: string;
+  status: string;
+  risco_atual: number | null;
+}
+
 // --- Dependências externas (npm install xlsx jspdf jspdf-autotable) ---
-// @ts-ignore
 import * as XLSX from 'xlsx';
-// @ts-ignore
 import jsPDF from 'jspdf';
-// @ts-ignore
 import 'jspdf-autotable';
 
 const CORES_ZONA: Record<string, string> = {
@@ -43,18 +67,14 @@ export default function RelatoriosGerenciais() {
     const [abaAtiva, setAbaAtiva] = useState<'risco' | 'mapa' | 'eficacia'>('risco');
     
     // Estados de Dados
-    const [alunosRisco, setAlunosRisco] = useState<any[]>([]);
-    const [mapaCalor, setMapaCalor] = useState<any[]>([]);
-    const [eficacia, setEficacia] = useState<any[]>([]);
+    const [alunosRisco, setAlunosRisco] = useState<AlunoRisco[]>([]);
+    const [mapaCalor, setMapaCalor] = useState<MapaCalor[]>([]);
+    const [eficacia, setEficacia] = useState<EficaciaIntervencao[]>([]);
     
     const [loading, setLoading] = useState(true);
     const [filtroNivel, setFiltroNivel] = useState<string>('ALTO'); // ALTO, MUITO_ALTO, TODOS
 
-    useEffect(() => {
-        carregarDados();
-    }, [filtroNivel]);
-
-    const carregarDados = async () => {
+    const carregarDados = useCallback(async () => {
         if (!token) return;
         setLoading(true);
         try {
@@ -69,16 +89,55 @@ export default function RelatoriosGerenciais() {
             // 3. Eficácia
             const efic = await api.relatorios.getEficacia(token);
             setEficacia(efic);
-        } catch (error: any) {
-            addToast({ type: 'error', title: 'Erro', message: error.message });
+        } catch (error: unknown) {
+            const mensagem = error instanceof Error ? error.message : 'Erro ao carregar dados';
+            addToast({ type: 'error', title: 'Erro', message: mensagem });
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, filtroNivel, addToast]);
+
+    useEffect(() => {
+        carregarDados();
+    }, [carregarDados]);
 
     // --- Funções de Exportação ---
 
-    const exportarAlunosRiscoExcel = () => {
+    /**
+     * Exporta via backend (Excel/PDF gerados no servidor com openpyxl/reportlab).
+     * Retorna true em caso de sucesso; false para permitir fallback local.
+     */
+    const baixarExportServidor = async (formato: 'xlsx' | 'pdf'): Promise<boolean> => {
+        try {
+            const token = localStorage.getItem('sapee_token');
+            if (!token) return false;
+            const base = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const resp = await fetch(
+                `${base}/relatorios/gerenciais/alunos-risco/export?nivel=${encodeURIComponent(filtroNivel)}&formato=${formato}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!resp.ok) return false;
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Relatorio_Alunos_Risco_${new Date().toISOString().split('T')[0]}.${formato}`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            addToast({ type: 'success', title: 'Sucesso', message: `${formato.toUpperCase()} gerado com sucesso` });
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    const exportarAlunosRiscoExcel = async () => {
+        // Preferência: geração no backend (Excel real)
+        if (await baixarExportServidor('xlsx')) return;
+
+        // Fallback: geração local (SheetJS)
         const dadosFormatados = alunosRisco.map(a => ({
             Matrícula: a.matricula,
             Nome: a.nome,
@@ -97,7 +156,11 @@ export default function RelatoriosGerenciais() {
         addToast({ type: 'success', title: 'Sucesso', message: 'Excel gerado com sucesso' });
     };
 
-    const exportarAlunosRiscoPDF = () => {
+    const exportarAlunosRiscoPDF = async () => {
+        // Preferência: geração no backend (PDF real)
+        if (await baixarExportServidor('pdf')) return;
+
+        // Fallback: geração local (jsPDF)
         const doc = new jsPDF();
         doc.text("Relatório de Alunos em Risco - SAPEE DEWAS", 14, 15);
         doc.setFontSize(10);
@@ -113,7 +176,7 @@ export default function RelatoriosGerenciais() {
             a.fatores ? (a.fatores.length > 40 ? a.fatores.substring(0, 40) + '...' : a.fatores) : '-'
         ]);
 
-        // @ts-ignore
+        // @ts-expect-error autoTable é plugin do jsPDF sem tipos declarados
         doc.autoTable({
             head: [colunas],
             body: dados,
@@ -340,7 +403,7 @@ export default function RelatoriosGerenciais() {
 
                             <ResponsiveTable
                                 data={eficacia}
-                                keyExtractor={(e, i) => e.id_intervencao.toString()}
+                                keyExtractor={(e, _i) => e.id_intervencao.toString()}
                                 emptyMessage="Nenhuma intervenção registrada."
                                 columns={[
                                     {

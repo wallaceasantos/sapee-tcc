@@ -3,7 +3,7 @@
  * SAPEE DEWAS Frontend
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, AlertTriangle, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../services/AuthContext';
@@ -31,7 +31,7 @@ export function NotificationBell() {
   const [naoLidos, setNaoLidos] = useState<number>(0);
 
   // Carregar alertas
-  const carregarAlertas = async () => {
+  const carregarAlertas = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
@@ -58,7 +58,7 @@ export function NotificationBell() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   // Carregar ao montar
   useEffect(() => {
@@ -68,7 +68,7 @@ export function NotificationBell() {
     const interval = setInterval(carregarAlertas, 5 * 60 * 1000);
     
     return () => clearInterval(interval);
-  }, [user]);
+  }, [carregarAlertas]);
 
   // Enviar alerta individual via Telegram
   const enviarAlertaTelegram = async (matricula: string) => {

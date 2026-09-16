@@ -9,7 +9,7 @@
 /**
  * Exportar dados para CSV
  */
-export const exportToCSV = (data: any[], filename: string, headers?: Record<string, string>) => {
+export const exportToCSV = (data: Record<string, unknown>[], filename: string, headers?: Record<string, string>) => {
   if (!data || data.length === 0) {
     console.error('Nenhum dado para exportar');
     return;
@@ -54,7 +54,7 @@ export const exportToCSV = (data: any[], filename: string, headers?: Record<stri
  * Exportar dados para Excel (XLSX) - Versão simplificada
  * Cria um arquivo HTML que o Excel consegue abrir
  */
-export const exportToExcel = (data: any[], filename: string, sheetName?: string) => {
+export const exportToExcel = (data: Record<string, unknown>[], filename: string, _sheetName?: string) => {
   if (!data || data.length === 0) {
     console.error('Nenhum dado para exportar');
     return;
@@ -64,7 +64,7 @@ export const exportToExcel = (data: any[], filename: string, sheetName?: string)
   const columns = Object.keys(data[0]);
   
   // Criar tabela HTML
-  let html = `
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -106,11 +106,11 @@ export const exportReportToPDF = (options: {
   title: string;
   subtitle?: string;
   headers: string[];
-  data: any[][];
+  data: unknown[][];
   filename: string;
   stats?: Array<{ label: string; value: string | number }>;
 }) => {
-  const { title, subtitle, headers, data, filename, stats } = options;
+  const { title, subtitle, headers, data, stats } = options;
 
   // Criar janela de impressão
   const printWindow = window.open('', '_blank');

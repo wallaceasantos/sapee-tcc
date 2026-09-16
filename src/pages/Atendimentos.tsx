@@ -3,8 +3,8 @@
  * SAPEE DEWAS - Registro de atendimentos individuais
  */
 
-import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, Trash2, Save, X, AlertCircle, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Users, Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
 import { useToast } from '../components/ui/Toast';
@@ -31,6 +31,27 @@ interface Atendimento {
   prioridade: string;
   criado_at?: string;
   aluno?: { nome: string; matricula: string };
+}
+
+interface HistoricoAtendimento {
+  id?: number;
+  usuario?: string;
+  data_mudanca?: string;
+  status_anterior?: string;
+  status_novo?: string;
+  observacoes?: string;
+}
+
+interface StatsAtendimento {
+  total: number;
+  com_encaminhamento: number;
+  com_followup: number;
+  por_prioridade?: Record<string, number>;
+  por_status?: Record<string, number>;
+}
+
+interface AlertasDemora {
+  total_alertas: number;
 }
 
 const TIPOS_ATENDIMENTO = [
@@ -75,7 +96,7 @@ export default function Atendimentos() {
   // Form
   const [buscaAluno, setBuscaAluno] = useState('');
   const [alunoSelecionado, setAlunoSelecionado] = useState<{ matricula: string; nome: string } | null>(null);
-  const [alunosFiltrados, setAlunosFiltrados] = useState<any[]>([]);
+  const [alunosFiltrados, setAlunosFiltrados] = useState<Array<{ matricula: string; nome: string }>>([]);
   const [loadingBusca, setLoadingBusca] = useState(false);
   const [tipoAtendimento, setTipoAtendimento] = useState('PSICOLOGICO');
   const [statusAtend, setStatusAtend] = useState('AGENDADO');
@@ -90,17 +111,12 @@ export default function Atendimentos() {
   const [dataProximoAtendimento, setDataProximoAtendimento] = useState('');
 
   const [abaAtiva, setAbaAtiva] = useState<'atendimentos' | 'encaminhamentos'>('atendimentos');
-  const [stats, setStats] = useState<any>(null);
-  const [alertasDemora, setAlertasDemora] = useState<any>(null);
-  const [historicoSelecionado, setHistoricoSelecionado] = useState<any[]>([]);
+  const [stats, setStats] = useState<StatsAtendimento | null>(null);
+  const [alertasDemora, setAlertasDemora] = useState<AlertasDemora | null>(null);
+  const [historicoSelecionado, setHistoricoSelecionado] = useState<HistoricoAtendimento[]>([]);
   const [showHistorico, setShowHistorico] = useState(false);
   
-  useEffect(() => {
-    loadAtendimentos();
-    loadStats();
-  }, [filtroTipo, filtroStatus, filtroPrioridade, abaAtiva]);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!token) return;
     try {
       const data = await api.atendimentos.stats(token);
@@ -112,9 +128,9 @@ export default function Atendimentos() {
     } catch (error) {
       console.error("Erro ao carregar estatísticas:", error);
     }
-  };
+  }, [token]);
 
-  const loadHistorico = async (atendimentoId: number) => {
+  const loadHistorico = useCallback(async (atendimentoId: number) => {
     if (!token) return;
     try {
       const data = await api.atendimentos.historico(token, atendimentoId);
@@ -123,13 +139,13 @@ export default function Atendimentos() {
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
     }
-  };
+  }, [token]);
 
-  const loadAtendimentos = async () => {
+  const loadAtendimentos = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const params: any = { limit: 500 }; // Aumentamos o limite para garantir que pegamos tudo
+      const params: Record<string, string | number> = { limit: 500 }; // Aumentamos o limite para garantir que pegamos tudo
       
       if (filtroTipo !== 'todos') params.tipo = filtroTipo;
       if (filtroStatus !== 'todos') params.status = filtroStatus;
@@ -139,17 +155,22 @@ export default function Atendimentos() {
       
       // Filtragem lógica para a aba de encaminhamentos
       if (abaAtiva === 'encaminhamentos') {
-        // Aceita tanto boolean true quanto número 1
-        setAtendimentos(data.filter((a: any) => a.necessita_encaminhamento == true || a.necessita_encaminhamento === 1));
+        // Aceita tanto boolean true quanto número 1 vindo do backend
+        setAtendimentos(data.filter((a: Atendimento) => Number(a.necessita_encaminhamento) === 1));
       } else {
         setAtendimentos(data);
       }
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao carregar atendimentos' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, filtroTipo, filtroStatus, filtroPrioridade, abaAtiva, addToast]);
+
+  useEffect(() => {
+    loadAtendimentos();
+    loadStats();
+  }, [filtroTipo, filtroStatus, filtroPrioridade, abaAtiva, loadAtendimentos, loadStats]);
 
   const handleBuscaAluno = async () => {
     if (!buscaAluno.trim() || buscaAluno.length < 2) return;
@@ -158,14 +179,14 @@ export default function Atendimentos() {
     try {
       const data = await api.alunos.buscar(token, buscaAluno, 10);
       setAlunosFiltrados(data);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro na busca' });
     } finally {
       setLoadingBusca(false);
     }
   };
 
-  const handleSelectAluno = (aluno: any) => {
+  const handleSelectAluno = (aluno: { matricula: string; nome: string }) => {
     setAlunoSelecionado({ matricula: aluno.matricula, nome: aluno.nome });
     setBuscaAluno(`${aluno.nome} (${aluno.matricula})`);
     setAlunosFiltrados([]);
@@ -205,8 +226,8 @@ export default function Atendimentos() {
 
       resetForm();
       loadAtendimentos();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao salvar atendimento' });
     }
   };
 
@@ -252,8 +273,8 @@ export default function Atendimentos() {
       await api.atendimentos.update(token, matricula, id, { status_encaminhamento: novoStatus });
       addToast({ type: 'success', title: 'Status atualizado', message: `Encaminhamento: ${novoStatus}` });
       loadAtendimentos();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao atualizar status' });
     }
   };
 
@@ -264,8 +285,8 @@ export default function Atendimentos() {
       await api.atendimentos.delete(token, matricula, id);
       addToast({ type: 'success', title: 'Excluído', message: 'Atendimento excluído' });
       loadAtendimentos();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao excluir atendimento' });
     }
   };
 
@@ -328,9 +349,9 @@ export default function Atendimentos() {
           )}
         >
           🔗 Encaminhamentos Externos
-          {stats?.com_encaminhamento > 0 && (
+          {(stats?.com_encaminhamento ?? 0) > 0 && (
             <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full text-xs font-bold">
-              {stats.com_encaminhamento}
+              {stats?.com_encaminhamento ?? 0}
             </span>
           )}
         </button>
@@ -374,12 +395,12 @@ export default function Atendimentos() {
           </div>
 
           {/* Card de Alerta de Demora */}
-          {alertasDemora?.total_alertas > 0 && (
+          {(alertasDemora?.total_alertas ?? 0) > 0 && (
             <div className="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-4 flex items-center gap-4 animate-pulse">
               <div className="p-3 bg-red-100 dark:bg-red-900/40 rounded-lg text-2xl">⚠️</div>
               <div>
                 <p className="text-xs font-bold text-red-600 dark:text-red-400 uppercase">Demora Excessiva</p>
-                <p className="text-2xl font-black text-red-700 dark:text-red-300">{alertasDemora.total_alertas}</p>
+                <p className="text-2xl font-black text-red-700 dark:text-red-300">{alertasDemora?.total_alertas ?? 0}</p>
                 <p className="text-xs text-red-500">+30 dias</p>
               </div>
             </div>

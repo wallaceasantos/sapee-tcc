@@ -2,21 +2,23 @@
 Schemas Pydantic - Validação de Dados
 SAPEE DEWAS Backend
 """
-
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
-from typing import Optional, List
-from datetime import datetime, date
+from datetime import date, datetime, time
 from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 # ============================================
 # ENUMS
 # ============================================
+
 
 class NivelRisco(str, Enum):
     BAIXO = "BAIXO"
     MEDIO = "MEDIO"
     ALTO = "ALTO"
     MUITO_ALTO = "MUITO_ALTO"
+
 
 class StatusIntervencao(str, Enum):
     RASCUNHO = "RASCUNHO"
@@ -25,16 +27,19 @@ class StatusIntervencao(str, Enum):
     CONCLUIDA = "CONCLUIDA"
     CANCELADA = "CANCELADA"
 
+
 class Modalidade(str, Enum):
     INTEGRADO = "Integrado"
     SUBSEQUENTE = "Subsequente"
     SUPERIOR = "Superior"
     POS_GRADUACAO = "Pós-Graduação"
 
+
 class Turno(str, Enum):
     MATUTINO = "MATUTINO"
     VESPERTINO = "VESPERTINO"
     NOTURNO = "NOTURNO"
+
 
 class ZonaResidencial(str, Enum):
     ZONA_NORTE = "ZONA_NORTE"
@@ -44,21 +49,25 @@ class ZonaResidencial(str, Enum):
     CENTRO = "CENTRO"
     INTERIOR = "INTERIOR"
 
+
 class DificuldadeAcesso(str, Enum):
     FACIL = "FACIL"
     MEDIA = "MEDIA"
     DIFICIL = "DIFICIL"
     MUITO_DIFICIL = "MUITO_DIFICIL"
 
+
 class Sexo(str, Enum):
     M = "M"
     F = "F"
-    O = "O"
+    O = "O"  # noqa: E741
+
 
 class SituacaoNota(str, Enum):
     APROVADO = "APROVADO"
     REPROVADO = "REPROVADO"
     CURSANDO = "CURSANDO"
+
 
 class TipoAtendimento(str, Enum):
     PSICOLOGICO = "PSICOLOGICO"
@@ -69,6 +78,7 @@ class TipoAtendimento(str, Enum):
     ENCAMINHAMENTO_EXTERNO = "ENCAMINHAMENTO_EXTERNO"
     CONVERSA_INFORMAL = "CONVERSA_INFORMAL"
 
+
 class StatusAtendimento(str, Enum):
     AGENDADO = "AGENDADO"
     REALIZADO = "REALIZADO"
@@ -76,17 +86,20 @@ class StatusAtendimento(str, Enum):
     EM_ANDAMENTO = "EM_ANDAMENTO"
     CONCLUIDO = "CONCLUIDO"
 
+
 class DestinatarioTipo(str, Enum):
     RESPONSAVEL = "RESPONSAVEL"
     ALUNO = "ALUNO"
     COORDENADOR = "COORDENADOR"
     PROFESSOR = "PROFESSOR"
 
+
 class CanalComunicacao(str, Enum):
     WHATSAPP = "WHATSAPP"
     SMS = "SMS"
     EMAIL = "EMAIL"
     SISTEMA = "SISTEMA"
+
 
 class TipoComunicacao(str, Enum):
     FALTAS = "FALTAS"
@@ -96,6 +109,7 @@ class TipoComunicacao(str, Enum):
     MANUAL = "MANUAL"
     ENCAMINHAMENTO = "ENCAMINHAMENTO"
 
+
 class StatusComunicacao(str, Enum):
     PENDENTE = "PENDENTE"
     ENVIADA = "ENVIADA"
@@ -104,62 +118,80 @@ class StatusComunicacao(str, Enum):
     FALHA = "FALHA"
     CANCELADA = "CANCELADA"
 
+
 # ============================================
 # TOKEN & AUTH
 # ============================================
+
 
 class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
+
 class TokenData(BaseModel):
     user_id: Optional[int] = None
     email: Optional[str] = None
     role: Optional[str] = None
 
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     senha: str
 
+
 # ============================================
 # ROLES
 # ============================================
+
 
 class RoleBase(BaseModel):
     nome: str
     descricao: Optional[str] = None
     permissoes: Optional[str] = None  # JSON como string
 
+
 class RoleCreate(RoleBase):
     pass
+
 
 class Role(RoleBase):
     id: int
     criado_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 # ============================================
 # CURSOS
 # ============================================
 
+
 class CursoBase(BaseModel):
     nome: str
     modalidade: Modalidade = Modalidade.INTEGRADO
 
+
 class CursoCreate(CursoBase):
     pass
+
 
 class Curso(CursoBase):
     id: int
     criado_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 # ============================================
 # USUÁRIOS
 # ============================================
+
 
 class UsuarioBase(BaseModel):
     nome: str
@@ -168,8 +200,10 @@ class UsuarioBase(BaseModel):
     curso_id: Optional[int] = None
     ativo: bool = True
 
+
 class UsuarioCreate(UsuarioBase):
     senha: str = Field(..., min_length=6, description="Senha deve ter pelo menos 6 caracteres")
+
 
 class UsuarioUpdate(BaseModel):
     nome: Optional[str] = None
@@ -179,9 +213,11 @@ class UsuarioUpdate(BaseModel):
     ativo: Optional[bool] = None
     senha: Optional[str] = Field(None, min_length=6)
 
+
 class TrocaSenhaRequest(BaseModel):
     senha_atual: str = Field(..., description="Senha atual do usuário")
     senha_nova: str = Field(..., min_length=6, description="Nova senha (mínimo 6 caracteres)")
+
 
 class UsuarioResponse(UsuarioBase):
     id: int
@@ -189,8 +225,9 @@ class UsuarioResponse(UsuarioBase):
     ultimo_acesso: Optional[datetime] = None
     role: Optional[Role] = None
     curso: Optional[Curso] = None
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 # Forward references para tipos circulares
 UsuarioResponse.model_rebuild()
@@ -198,6 +235,7 @@ UsuarioResponse.model_rebuild()
 # ============================================
 # ALUNOS (27+ campos)
 # ============================================
+
 
 class AlunoBase(BaseModel):
     # Identificação
@@ -207,7 +245,7 @@ class AlunoBase(BaseModel):
     data_nascimento: Optional[date] = None
     idade: Optional[int] = None
     sexo: Optional[Sexo] = None
-    
+
     # Acadêmicos
     curso_id: Optional[int] = None
     periodo: Optional[int] = Field(None, ge=1, le=8)
@@ -217,7 +255,7 @@ class AlunoBase(BaseModel):
     historico_reprovas: Optional[int] = Field(default=0, ge=0)
     coeficiente_rendimento: Optional[float] = Field(None, ge=0, le=10)
     ano_ingresso: Optional[int] = None
-    
+
     # Endereço
     cidade: Optional[str] = None
     cep: Optional[str] = None
@@ -226,28 +264,28 @@ class AlunoBase(BaseModel):
     complemento: Optional[str] = None
     bairro: Optional[str] = None
     zona_residencial: Optional[ZonaResidencial] = None
-    
+
     # Socioeconômicos
     renda_familiar: Optional[float] = Field(None, ge=0)
     renda_per_capita: Optional[float] = Field(None, ge=0)
     possui_auxilio: Optional[bool] = False
     tipo_auxilio: Optional[str] = None  # JSON string
-    
+
     # Trabalho
     trabalha: Optional[bool] = False
     carga_horaria_trabalho: Optional[int] = Field(None, ge=0, le=60)
-    
+
     # Deslocamento
     tempo_deslocamento: Optional[int] = Field(None, ge=0)
     custo_transporte_diario: Optional[float] = Field(None, ge=0)
     dificuldade_acesso: Optional[DificuldadeAcesso] = None
     transporte_utilizado: Optional[str] = None
     usa_transporte_alternativo: Optional[bool] = False
-    
+
     # Infraestrutura
     possui_computador: Optional[bool] = False
     possui_internet: Optional[bool] = False
-    
+
     # Vulnerabilidade
     beneficiario_bolsa_familia: Optional[bool] = False
     primeiro_geracao_universidade: Optional[bool] = False
@@ -265,12 +303,15 @@ class AlunoBase(BaseModel):
     questionario_respondido: Optional[bool] = False
     data_ultimo_questionario: Optional[datetime] = None
 
+
 class AlunoCreate(AlunoBase):
-    matricula: str = Field(..., min_length=5, max_length=20, pattern=r'^\d+$')
+    matricula: str = Field(..., min_length=5, max_length=20, pattern=r"^\d+$")
+
 
 class AlunoUpdate(AlunoBase):
     # Todos os campos opcionais para update parcial
     pass
+
 
 class AlunoResponse(AlunoBase):
     matricula: str
@@ -278,9 +319,10 @@ class AlunoResponse(AlunoBase):
 
     # Relacionamentos
     curso: Optional[Curso] = None
-    predicao_atual: Optional['PredicaoResponse'] = None
+    predicao_atual: Optional["PredicaoResponse"] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 # Alias para compatibilidade
 AlunoComPredicao = AlunoResponse
@@ -289,13 +331,16 @@ AlunoComPredicao = AlunoResponse
 # PREDIÇÕES
 # ============================================
 
+
 class PredicaoBase(BaseModel):
     risco_evasao: float = Field(..., ge=0, le=100)
     nivel_risco: NivelRisco
     fatores_principais: Optional[str] = None
 
+
 class PredicaoCreate(PredicaoBase):
     aluno_id: str
+
 
 class PredicaoResponse(PredicaoBase):
     id: int
@@ -305,9 +350,11 @@ class PredicaoResponse(PredicaoBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # ============================================
 # FREQUÊNCIA MENSAL
 # ============================================
+
 
 class FrequenciaMensalBase(BaseModel):
     mes: int = Field(..., ge=1, le=12)
@@ -318,8 +365,10 @@ class FrequenciaMensalBase(BaseModel):
     total_aulas_mes: int = Field(..., ge=1)
     observacoes: Optional[str] = None
 
+
 class FrequenciaMensalCreate(FrequenciaMensalBase):
     aluno_id: str
+
 
 class FrequenciaMensalResponse(FrequenciaMensalBase):
     id: int
@@ -328,9 +377,11 @@ class FrequenciaMensalResponse(FrequenciaMensalBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # ============================================
 # LANÇAMENTO MENSAL DE FREQUÊNCIA
 # ============================================
+
 
 class FrequenciaLancamentoItem(BaseModel):
     aluno_id: str
@@ -339,57 +390,75 @@ class FrequenciaLancamentoItem(BaseModel):
     faltas_nao_justificadas: int = Field(default=0, ge=0)
     total_aulas_mes: int = Field(..., ge=1)
 
+
 class FrequenciaLancamento(BaseModel):
     mes: int = Field(..., ge=1, le=12)
     ano: int = Field(..., ge=2020)
     alunos: List[FrequenciaLancamentoItem]
     observacoes: Optional[str] = None
-    
-    @field_validator('ano')
+
+    @field_validator("ano")
     @classmethod
     def validate_ano(cls, v):
         from datetime import datetime
+
         now = datetime.now()
         ano_atual = now.year
-        mes_atual = now.month + 1  # 1-12
-        
+        _mes_atual = now.month + 1  # 1-12
+
         # Futuro: NUNCA
         if v > ano_atual:
-            raise ValueError(f'Não é possível lançar frequência de {v}. Ano futuro não permitido.')
-        
+            raise ValueError(f"Não é possível lançar frequência de {v}. Ano futuro não permitido.")
+
         # Ano atual: só até mês atual
         if v == ano_atual:
             # Validação será feita no validator do mes
             pass
-        
+
         # Ano anterior: permite (correções)
         if v == ano_atual - 1:
             return v
-        
+
         # Muito antigo: não permite
         if v < ano_atual - 1:
-            raise ValueError(f'Ano {v} muito antigo. Permitido: {ano_atual-1} (correções) e {ano_atual} (até mês atual).')
-        
+            raise ValueError(
+                f"Ano {v} muito antigo. Permitido: {ano_atual-1} (correções) e {ano_atual} (até mês atual)."
+            )
+
         return v
-    
-    @field_validator('mes')
+
+    @field_validator("mes")
     @classmethod
     def validate_mes(cls, v, info):
         from datetime import datetime
+
         now = datetime.now()
         ano_atual = now.year
         mes_atual = now.month + 1  # 1-12
-        
+
         # Se o ano for o ano atual, validar mês
-        if info.data.get('ano') == ano_atual and v > mes_atual:
-            nomes_meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+        if info.data.get("ano") == ano_atual and v > mes_atual:
+            nomes_meses = [
+                "Janeiro",
+                "Fevereiro",
+                "Março",
+                "Abril",
+                "Maio",
+                "Junho",
+                "Julho",
+                "Agosto",
+                "Setembro",
+                "Outubro",
+                "Novembro",
+                "Dezembro",
+            ]
             raise ValueError(
-                f'Não é possível lançar {nomes_meses[v-1]}/{ano_atual}. '
-                f'Este mês ainda não iniciou. Estamos em {nomes_meses[mes_atual-1]}.'
+                f"Não é possível lançar {nomes_meses[v-1]}/{ano_atual}. "
+                f"Este mês ainda não iniciou. Estamos em {nomes_meses[mes_atual-1]}."
             )
-        
+
         return v
+
 
 class FrequenciaLancamentoResponse(BaseModel):
     registros_criados: int
@@ -399,19 +468,23 @@ class FrequenciaLancamentoResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # ============================================
 # INTERVENÇÕES
 # ============================================
+
 
 class IntervencaoBase(BaseModel):
     tipo: str
     descricao: Optional[str] = None
     status: StatusIntervencao = StatusIntervencao.PENDENTE
-    prioridade: str = 'MEDIA'
+    prioridade: str = "MEDIA"
     data_intervencao: date
+
 
 class IntervencaoCreate(IntervencaoBase):
     pass
+
 
 class IntervencaoUpdate(BaseModel):
     tipo: Optional[str] = None
@@ -422,6 +495,7 @@ class IntervencaoUpdate(BaseModel):
     data_limite: Optional[date] = None
     observacoes: Optional[str] = None
 
+
 class IntervencaoResponse(IntervencaoBase):
     id: int
     usuario_id: Optional[int] = None
@@ -429,7 +503,7 @@ class IntervencaoResponse(IntervencaoBase):
     data_conclusao: Optional[date] = None
     data_limite: Optional[date] = None
     observacoes: Optional[str] = None
-    
+
     # Campos para sugestões automáticas
     auto_gerada: Optional[bool] = False
     motivo_risco: Optional[str] = None
@@ -443,9 +517,11 @@ class IntervencaoResponse(IntervencaoBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # ============================================
 # AUDIT LOGS
 # ============================================
+
 
 class AuditLogBase(BaseModel):
     acao: str
@@ -454,20 +530,24 @@ class AuditLogBase(BaseModel):
     user_agent: Optional[str] = None
     session_id: Optional[str] = None
 
+
 class AuditLogCreate(AuditLogBase):
     usuario_id: int
+
 
 class AuditLogResponse(AuditLogBase):
     id: int
     usuario_id: int
     criado_at: datetime
     usuario: Optional[UsuarioResponse] = None
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 # ============================================
 # DASHBOARD & STATS
 # ============================================
+
 
 class DashboardStats(BaseModel):
     total_alunos: int
@@ -478,6 +558,7 @@ class DashboardStats(BaseModel):
     media_geral_campus: float
     intervencoes_ativas: int
 
+
 class AlunoRiscoStats(BaseModel):
     matricula: str
     nome: str
@@ -485,9 +566,11 @@ class AlunoRiscoStats(BaseModel):
     risco_evasao: float
     nivel_risco: NivelRisco
 
+
 # ============================================
 # PLANOS DE AÇÃO E METAS
 # ============================================
+
 
 class PlanosAcaoBase(BaseModel):
     curso_id: Optional[int] = None  # NULL para planos genéricos
@@ -499,8 +582,10 @@ class PlanosAcaoBase(BaseModel):
     observacoes: Optional[str] = None
     ativo: bool = True
 
+
 class PlanosAcaoCreate(PlanosAcaoBase):
     pass
+
 
 class PlanosAcaoUpdate(BaseModel):
     meta_frequencia_minima: Optional[float] = None
@@ -509,6 +594,7 @@ class PlanosAcaoUpdate(BaseModel):
     acoes_recomendadas: Optional[str] = None
     observacoes: Optional[str] = None
     ativo: Optional[bool] = None
+
 
 class PlanosAcaoResponse(PlanosAcaoBase):
     id: int
@@ -521,7 +607,7 @@ class PlanosAcaoResponse(PlanosAcaoBase):
 
 class MetasSemestraisBase(BaseModel):
     curso_id: int
-    semestre: str = Field(..., pattern=r'^\d{4}-\d$')  # Ex: "2026-1"
+    semestre: str = Field(..., pattern=r"^\d{4}-\d$")  # Ex: "2026-1"
     meta_frequencia_geral: float = Field(default=80.0, ge=0, le=100)
     meta_media_geral: float = Field(default=7.0, ge=0, le=10)
     meta_reducao_evasao: float = Field(default=10.0, ge=0, le=100)
@@ -530,8 +616,10 @@ class MetasSemestraisBase(BaseModel):
     data_fim: date
     observacoes: Optional[str] = None
 
+
 class MetasSemestraisCreate(MetasSemestraisBase):
     pass
+
 
 class MetasSemestraisUpdate(BaseModel):
     meta_frequencia_geral: Optional[float] = None
@@ -540,6 +628,7 @@ class MetasSemestraisUpdate(BaseModel):
     meta_recuperacao: Optional[float] = None
     status: Optional[str] = None
     observacoes: Optional[str] = None
+
 
 class MetasSemestraisResponse(MetasSemestraisBase):
     id: int
@@ -558,8 +647,15 @@ class AlunoMetaBase(BaseModel):
     data_limite: date
     observacoes: Optional[str] = None
 
-class AlunoMetaCreate(AlunoMetaBase):
-    pass
+
+class AlunoMetaCreate(BaseModel):
+    aluno_matricula: Optional[str] = None  # Deriva da rota quando não informado
+    plano_acao_id: Optional[int] = None
+    meta_frequencia: float = Field(default=75.0, ge=0, le=100)
+    meta_media: float = Field(default=6.0, ge=0, le=10)
+    data_limite: date
+    observacoes: Optional[str] = None
+
 
 class AlunoMetaUpdate(BaseModel):
     meta_frequencia: Optional[float] = None
@@ -568,6 +664,7 @@ class AlunoMetaUpdate(BaseModel):
     status: Optional[str] = None
     observacoes: Optional[str] = None
     data_atingimento: Optional[date] = None
+
 
 class AlunoMetaResponse(AlunoMetaBase):
     id: int
@@ -584,6 +681,7 @@ class AlunoMetaResponse(AlunoMetaBase):
 # FALTAS CONSECUTIVAS
 # ============================================
 
+
 class RegistroFaltasDiariasBase(BaseModel):
     aluno_matricula: str
     disciplina: str
@@ -591,8 +689,10 @@ class RegistroFaltasDiariasBase(BaseModel):
     justificada: bool = False
     motivo_justificativa: Optional[str] = None
 
+
 class RegistroFaltasDiariasCreate(RegistroFaltasDiariasBase):
     pass
+
 
 class RegistroFaltasDiariasResponse(RegistroFaltasDiariasBase):
     id: int
@@ -612,12 +712,14 @@ class AlertaFaltasConsecutivasBase(BaseModel):
     data_fim_faltas: date
     disciplinas_afetadas: Optional[str] = None  # JSON string
 
+
 class AlertaFaltasConsecutivasCreate(AlertaFaltasConsecutivasBase):
     responsavel_id: Optional[int] = None
     data_limite: Optional[date] = None
     contato_responsavel_data: Optional[date] = None
     contato_responsavel_meio: Optional[str] = None
     contato_responsavel_obs: Optional[str] = None
+
 
 class AlertaFaltasConsecutivasUpdate(BaseModel):
     status: Optional[str] = None
@@ -628,6 +730,7 @@ class AlertaFaltasConsecutivasUpdate(BaseModel):
     contato_responsavel_data: Optional[date] = None
     contato_responsavel_meio: Optional[str] = None
     contato_responsavel_obs: Optional[str] = None
+
 
 class AlertaFaltasConsecutivasResponse(AlertaFaltasConsecutivasBase):
     id: int
@@ -644,8 +747,8 @@ class AlertaFaltasConsecutivasResponse(AlertaFaltasConsecutivasBase):
 
     # Relacionamentos
     aluno: Optional[AlunoResponse] = None
-    responsavel: Optional['UsuarioResponse'] = None
-    historico: Optional[List['AlertaFaltasHistoricoResponse']] = []
+    responsavel: Optional["UsuarioResponse"] = None
+    historico: Optional[List["AlertaFaltasHistoricoResponse"]] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -654,14 +757,16 @@ class AlertaFaltasConsecutivasResponse(AlertaFaltasConsecutivasBase):
 # HISTÓRICO DE ALERTAS
 # ============================================
 
+
 class AlertaFaltasHistoricoResponse(BaseModel):
     """Resposta de histórico de alerta"""
+
     id: int
     alerta_id: int
     acao: str
     descricao: str
     usuario_id: Optional[int] = None
-    usuario: Optional['UsuarioResponse'] = None
+    usuario: Optional["UsuarioResponse"] = None
     criado_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -669,6 +774,7 @@ class AlertaFaltasHistoricoResponse(BaseModel):
 
 class FaltasConsecutivasStats(BaseModel):
     """Estatísticas de faltas consecutivas para dashboard"""
+
     total_alertas_pendentes: int
     total_alertas_3_faltas: int
     total_alertas_5_faltas: int
@@ -676,48 +782,57 @@ class FaltasConsecutivasStats(BaseModel):
     alunos_com_faltas_consecutivas: int
 
 
+class FrequenciaStats(BaseModel):
+    """Estatísticas de frequência para o dashboard"""
+
+    total: int
+    abaixo_75_pct: int
+    abaixo_50_pct: int
+
+
 # ============================================
 # QUESTIONÁRIO PSICOSSOCIAL
 # ============================================
 
+
 class QuestionarioPsicossocialBase(BaseModel):
     """Base para questionário psicossocial"""
-    
+
     # Dimensão 1: Saúde Mental (1-5)
     q1_ansiedade: Optional[int] = Field(None, ge=1, le=5)
     q2_depressao: Optional[int] = Field(None, ge=1, le=5)
     q3_estresse: Optional[int] = Field(None, ge=1, le=5)
     q4_sono: Optional[int] = Field(None, ge=1, le=5)
     q5_bem_estar: Optional[int] = Field(None, ge=1, le=5)
-    
+
     # Dimensão 2: Integração Social (6-10)
     q6_pertencimento: Optional[int] = Field(None, ge=1, le=5)
     q7_amizades: Optional[int] = Field(None, ge=1, le=5)
     q8_participacao: Optional[int] = Field(None, ge=1, le=5)
     q9_relacionamento_professores: Optional[int] = Field(None, ge=1, le=5)
     q10_apoio_colegas: Optional[int] = Field(None, ge=1, le=5)
-    
+
     # Dimensão 3: Satisfação com Curso (11-15)
     q11_expectativas: Optional[int] = Field(None, ge=1, le=5)
     q12_qualidade_aulas: Optional[int] = Field(None, ge=1, le=5)
     q13_infraestrutura: Optional[int] = Field(None, ge=1, le=5)
     q14_conteudo_programatico: Optional[int] = Field(None, ge=1, le=5)
     q15_motivacao_curso: Optional[int] = Field(None, ge=1, le=5)
-    
+
     # Dimensão 4: Conflitos (16-20)
     q16_trabalho_estudo: Optional[int] = Field(None, ge=1, le=5)
     q17_familia_estudo: Optional[int] = Field(None, ge=1, le=5)
     q18_tempo_lazer: Optional[int] = Field(None, ge=1, le=5)
     q19_cansaco: Optional[int] = Field(None, ge=1, le=5)
     q20_sobrecarga: Optional[int] = Field(None, ge=1, le=5)
-    
+
     # Dimensão 5: Intenção de Evasão (21-25)
     q21_pensou_abandonar: Optional[int] = Field(None, ge=1, le=5)
     q22_frequencia_pensamento: Optional[int] = Field(None, ge=1, le=5)
     q23_motivacao_permanencia: Optional[int] = Field(None, ge=1, le=5)
     q24_plano_abandonar: Optional[int] = Field(None, ge=1, le=5)
     q25_previsao_abandono: Optional[int] = Field(None, ge=1, le=5)
-    
+
     # Metadados
     ip_address: Optional[str] = None
     dispositivo: Optional[str] = None
@@ -727,50 +842,53 @@ class QuestionarioPsicossocialBase(BaseModel):
 
 class QuestionarioPsicossocialCreate(QuestionarioPsicossocialBase):
     """Schema para criação de questionário"""
+
     aluno_matricula: str
 
 
 class QuestionarioPsicossocialUpdate(BaseModel):
     """Schema para atualização parcial"""
+
     # Permite atualizar qualquer campo individualmente
     q1_ansiedade: Optional[int] = Field(None, ge=1, le=5)
     q2_depressao: Optional[int] = Field(None, ge=1, le=5)
     q3_estresse: Optional[int] = Field(None, ge=1, le=5)
     q4_sono: Optional[int] = Field(None, ge=1, le=5)
     q5_bem_estar: Optional[int] = Field(None, ge=1, le=5)
-    
+
     q6_pertencimento: Optional[int] = Field(None, ge=1, le=5)
     q7_amizades: Optional[int] = Field(None, ge=1, le=5)
     q8_participacao: Optional[int] = Field(None, ge=1, le=5)
     q9_relacionamento_professores: Optional[int] = Field(None, ge=1, le=5)
     q10_apoio_colegas: Optional[int] = Field(None, ge=1, le=5)
-    
+
     q11_expectativas: Optional[int] = Field(None, ge=1, le=5)
     q12_qualidade_aulas: Optional[int] = Field(None, ge=1, le=5)
     q13_infraestrutura: Optional[int] = Field(None, ge=1, le=5)
     q14_conteudo_programatico: Optional[int] = Field(None, ge=1, le=5)
     q15_motivacao_curso: Optional[int] = Field(None, ge=1, le=5)
-    
+
     q16_trabalho_estudo: Optional[int] = Field(None, ge=1, le=5)
     q17_familia_estudo: Optional[int] = Field(None, ge=1, le=5)
     q18_tempo_lazer: Optional[int] = Field(None, ge=1, le=5)
     q19_cansaco: Optional[int] = Field(None, ge=1, le=5)
     q20_sobrecarga: Optional[int] = Field(None, ge=1, le=5)
-    
+
     q21_pensou_abandonar: Optional[int] = Field(None, ge=1, le=5)
     q22_frequencia_pensamento: Optional[int] = Field(None, ge=1, le=5)
     q23_motivacao_permanencia: Optional[int] = Field(None, ge=1, le=5)
     q24_plano_abandonar: Optional[int] = Field(None, ge=1, le=5)
     q25_previsao_abandono: Optional[int] = Field(None, ge=1, le=5)
-    
+
     termo_consentimento: Optional[bool] = None
 
 
 class QuestionarioPsicossocialResponse(QuestionarioPsicossocialBase):
     """Schema de resposta com dados calculados"""
+
     id: int
     aluno_matricula: str
-    
+
     # Campos calculados
     score_saude_mental: Optional[float] = None
     score_integracao_social: Optional[float] = None
@@ -780,7 +898,7 @@ class QuestionarioPsicossocialResponse(QuestionarioPsicossocialBase):
     score_psicossocial_total: Optional[float] = None
     nivel_risco_psicossocial: Optional[str] = None
     fatores_criticos: Optional[str] = None  # JSON array como string
-    
+
     # Metadados
     data_resposta: datetime
     termo_consentimento: bool
@@ -790,17 +908,18 @@ class QuestionarioPsicossocialResponse(QuestionarioPsicossocialBase):
 
 class QuestionarioPsicossocialDashboard(BaseModel):
     """Estatísticas do questionário para dashboard"""
+
     total_respostas: int
     alunos_com_questionario: int
     alunos_sem_questionario: int
     percentual_respostas: float
-    
+
     # Distribuição por nível de risco
     risco_baixo: int
     risco_medio: int
     risco_alto: int
     risco_muito_alto: int
-    
+
     # Scores médios por dimensão
     media_saude_mental: Optional[float] = None
     media_integracao_social: Optional[float] = None
@@ -808,7 +927,7 @@ class QuestionarioPsicossocialDashboard(BaseModel):
     media_conflitos: Optional[float] = None
     media_intencao_evasao: Optional[float] = None
     media_score_total: Optional[float] = None
-    
+
     # Fatores críticos mais frequentes
     fatores_criticos_frequentes: List[str] = []
 
@@ -817,39 +936,96 @@ class QuestionarioPsicossocialDashboard(BaseModel):
 # TOKENS DE ACESSO - QUESTIONÁRIO PÚBLICO
 # ============================================
 
+
 class TokenQuestionarioCreate(BaseModel):
     """Solicitação de geração de token"""
+
     aluno_matricula: str
     horas_validade: int = 24  # 24 horas padrão
 
 
 class TokenQuestionarioResponse(BaseModel):
     """Resposta com token gerado"""
+
     token: str
     valido_ate: datetime
     link_acesso: str
     aluno_nome: str
     aluno_matricula: str
-    
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class TokenQuestionarioEnviarRequest(BaseModel):
+    """Solicitação de envio de token por email"""
+
+    token: str
+    aluno_matricula: str
+    canal: str = "EMAIL"  # EMAIL
+
+
+class TokenQuestionarioEnviarResponse(BaseModel):
+    """Resposta do envio de token"""
+
+    sucesso: bool
+    mensagem: str
+    canal: str
+
+
+class TokenQuestionarioEnviarEmMassaRequest(BaseModel):
+    """Solicitação de envio de tokens em massa por email"""
+
+    alunos_matriculas: list[str]
+    canal: str = "EMAIL"  # EMAIL
+    horas_validade: int = 24
+
+
+class TokenQuestionarioEnviarEmMassaItem(BaseModel):
+    """Resultado do envio para um aluno"""
+
+    matricula: str
+    nome: str
+    sucesso: bool
+    mensagem: str
+
+
+class TokenQuestionarioEnviarEmMassaResponse(BaseModel):
+    """Resposta do envio em massa de tokens"""
+
+    total: int
+    sucessos: int
+    falhas: int
+    canal: str
+    detalhes: list[TokenQuestionarioEnviarEmMassaItem]
 
 
 class TokenQuestionarioValidateRequest(BaseModel):
     """Validação de token"""
+
     token: str
 
 
 class TokenQuestionarioValidateResponse(BaseModel):
     """Resposta de validação de token"""
+
     valido: bool
     mensagem: str
     aluno_matricula: Optional[str] = None
     aluno_nome: Optional[str] = None
 
 
+class TokenQuestionarioLimparExpiradosResponse(BaseModel):
+    """Resposta da limpeza de tokens expirados"""
+
+    removidos: int
+    dias_limite: int
+    data_limite: datetime
+
+
 # ============================================
 # EGRESSOS
 # ============================================
+
 
 class EgressoBase(BaseModel):
     aluno_matricula: str
@@ -864,8 +1040,10 @@ class EgressoBase(BaseModel):
     esta_trabalhando: Optional[bool] = False
     observacoes: Optional[str] = None
 
+
 class EgressoCreate(EgressoBase):
     pass
+
 
 class EgressoUpdate(BaseModel):
     motivo_detalhes: Optional[str] = None
@@ -884,6 +1062,7 @@ class EgressoUpdate(BaseModel):
     data_acompanhamento: Optional[date] = None
     observacoes: Optional[str] = None
 
+
 class EgressoResponse(EgressoBase):
     id: int
     tinha_predicao_risco: Optional[bool] = False
@@ -897,6 +1076,7 @@ class EgressoResponse(EgressoBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class EgressoStatsResponse(BaseModel):
     total_egressos: int
     total_abandonos: int
@@ -905,22 +1085,27 @@ class EgressoStatsResponse(BaseModel):
     abandonos_preditos: int
     percentual_predicao_correta: float
 
+
 # ============================================
 # DISCIPLINAS
 # ============================================
+
 
 class DisciplinaBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     ativa: bool = True
     curso_id: Optional[int] = None
 
+
 class DisciplinaCreate(DisciplinaBase):
     pass
+
 
 class DisciplinaUpdate(BaseModel):
     nome: Optional[str] = None
     ativa: Optional[bool] = None
     curso_id: Optional[int] = None
+
 
 class DisciplinaResponse(DisciplinaBase):
     id: int
@@ -933,6 +1118,7 @@ class DisciplinaResponse(DisciplinaBase):
 # NOTAS POR DISCIPLINA
 # ============================================
 
+
 class NotaDisciplinaBase(BaseModel):
     disciplina: str = Field(..., min_length=2, max_length=100)
     disciplina_id: Optional[int] = None
@@ -942,8 +1128,10 @@ class NotaDisciplinaBase(BaseModel):
     faltas_disciplina: int = Field(default=0, ge=0, description="Faltas nesta disciplina")
     situacao: SituacaoNota = SituacaoNota.CURSANDO
 
+
 class NotaDisciplinaCreate(NotaDisciplinaBase):
     pass
+
 
 class NotaDisciplinaUpdate(BaseModel):
     disciplina: Optional[str] = None
@@ -953,6 +1141,7 @@ class NotaDisciplinaUpdate(BaseModel):
     nota: Optional[float] = None
     faltas_disciplina: Optional[int] = None
     situacao: Optional[SituacaoNota] = None
+
 
 class NotaDisciplinaResponse(NotaDisciplinaBase):
     id: int
@@ -967,12 +1156,13 @@ class NotaDisciplinaResponse(NotaDisciplinaBase):
 # ATENDIMENTOS / OCORRÊNCIAS
 # ============================================
 
+
 class AtendimentoBase(BaseModel):
     tipo_atendimento: TipoAtendimento
     status: StatusAtendimento = StatusAtendimento.AGENDADO
     data_atendimento: date
-    hora_inicio: Optional[str] = None
-    hora_fim: Optional[str] = None
+    hora_inicio: Optional[time] = None
+    hora_fim: Optional[time] = None
     local: Optional[str] = None
     descricao: str = Field(..., min_length=10, max_length=2000)
     observacoes: Optional[str] = None
@@ -984,24 +1174,28 @@ class AtendimentoBase(BaseModel):
     data_proximo_atendimento: Optional[date] = None
     prioridade: str = "MEDIA"
 
+
 class AtendimentoCreate(AtendimentoBase):
     usuario_id: Optional[int] = None  # Será preenchido pelo backend via token
+
 
 class AtendimentoUpdate(BaseModel):
     tipo_atendimento: Optional[TipoAtendimento] = None
     status: Optional[StatusAtendimento] = None
     data_atendimento: Optional[date] = None
-    hora_inicio: Optional[str] = None
-    hora_fim: Optional[str] = None
+    hora_inicio: Optional[time] = None
+    hora_fim: Optional[time] = None
     local: Optional[str] = None
     descricao: Optional[str] = None
     observacoes: Optional[str] = None
     necessita_encaminhamento: Optional[bool] = None
+    status_encaminhamento: Optional[str] = None
     tipo_encaminhamento: Optional[str] = None
     data_encaminhamento: Optional[date] = None
     necessita_followup: Optional[bool] = None
     data_proximo_atendimento: Optional[date] = None
     prioridade: Optional[str] = None
+
 
 class AtendimentoResponse(AtendimentoBase):
     id: int
@@ -1011,6 +1205,7 @@ class AtendimentoResponse(AtendimentoBase):
     atualizado_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class AtendimentoStats(BaseModel):
     total: int
@@ -1025,6 +1220,7 @@ class AtendimentoStats(BaseModel):
 # HISTÓRICO DE ENCAMINHAMENTOS
 # ============================================
 
+
 class HistoricoEncaminhamentoBase(BaseModel):
     atendimento_id: int
     usuario_id: int
@@ -1032,6 +1228,7 @@ class HistoricoEncaminhamentoBase(BaseModel):
     status_novo: str
     observacoes: Optional[str] = None
     data_mudanca: Optional[datetime] = None
+
 
 class HistoricoEncaminhamentoResponse(HistoricoEncaminhamentoBase):
     id: int
@@ -1044,6 +1241,7 @@ class HistoricoEncaminhamentoResponse(HistoricoEncaminhamentoBase):
 # COMUNICAÇÕES
 # ============================================
 
+
 class TemplateComunicacaoBase(BaseModel):
     codigo: str = Field(..., min_length=3, max_length=50)
     nome: str = Field(..., min_length=3, max_length=100)
@@ -1053,14 +1251,17 @@ class TemplateComunicacaoBase(BaseModel):
     conteudo: str = Field(..., min_length=10)
     ativo: bool = True
 
+
 class TemplateComunicacaoCreate(TemplateComunicacaoBase):
     pass
+
 
 class TemplateComunicacaoUpdate(BaseModel):
     nome: Optional[str] = None
     assunto: Optional[str] = None
     conteudo: Optional[str] = None
     ativo: Optional[bool] = None
+
 
 class TemplateComunicacaoResponse(TemplateComunicacaoBase):
     id: int
@@ -1082,8 +1283,10 @@ class ComunicacaoBase(BaseModel):
     eh_lembrete: bool = False
     data_agendada: Optional[datetime] = None
 
+
 class ComunicacaoCreate(ComunicacaoBase):
     usuario_id: Optional[int] = None
+
 
 class ComunicacaoUpdate(BaseModel):
     status: Optional[StatusComunicacao] = None
@@ -1093,6 +1296,7 @@ class ComunicacaoUpdate(BaseModel):
     resposta_conteudo: Optional[str] = None
     data_resposta: Optional[datetime] = None
     data_envio_efetivo: Optional[datetime] = None
+
 
 class ComunicacaoResponse(ComunicacaoBase):
     id: int
@@ -1104,6 +1308,7 @@ class ComunicacaoResponse(ComunicacaoBase):
     atualizado_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class ComunicacaoStats(BaseModel):
     total: int
@@ -1119,13 +1324,16 @@ class ComunicacaoStats(BaseModel):
 # CONFIGURAÇÕES DO SISTEMA
 # ============================================
 
+
 class ConfiguracaoSistemaBase(BaseModel):
     chave: str = Field(..., max_length=50)
     valor: Optional[str] = None
     descricao: Optional[str] = None
 
+
 class ConfiguracaoSistemaUpdate(BaseModel):
     valor: str
+
 
 class ConfiguracaoSistemaResponse(ConfiguracaoSistemaBase):
     id: int
@@ -1136,12 +1344,47 @@ class ConfiguracaoSistemaResponse(ConfiguracaoSistemaBase):
 
 
 # ============================================
+# TESTE DE CANAIS DE COMUNICAÇÃO
+# ============================================
+
+
+class CanalConfigTestRequest(BaseModel):
+    """Requisição para testar configuração de canal"""
+
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_user: Optional[str] = None
+    smtp_pass: Optional[str] = None
+    email_from: Optional[str] = None
+    email_from_name: Optional[str] = None
+
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+
+    twilio_account_sid: Optional[str] = None
+    twilio_auth_token: Optional[str] = None
+    twilio_whatsapp_number: Optional[str] = None
+
+    canal: str = "EMAIL"  # EMAIL, TELEGRAM, WHATSAPP
+
+
+class CanalConfigTestResponse(BaseModel):
+    """Resposta do teste de canal"""
+
+    sucesso: bool
+    mensagem: str
+    detalhes: Optional[str] = None
+
+
+# ============================================
 # RESPONSE GENÉRICAS
 # ============================================
+
 
 class MessageResponse(BaseModel):
     message: str
     detail: Optional[str] = None
+
 
 class PaginatedResponse(BaseModel):
     items: List
@@ -1155,8 +1398,10 @@ class PaginatedResponse(BaseModel):
 # DISCIPLINA PROFESSOR
 # ============================================
 
+
 class DisciplinaProfessorBase(BaseModel):
     """Base para vínculo professor-disciplina"""
+
     usuario_id: int
     disciplina_id: int
     curso_id: Optional[int] = None
@@ -1164,11 +1409,13 @@ class DisciplinaProfessorBase(BaseModel):
 
 class DisciplinaProfessorCreate(DisciplinaProfessorBase):
     """Schema para criar vínculo"""
+
     pass
 
 
 class DisciplinaProfessorResponse(BaseModel):
     """Resposta com dados do vínculo"""
+
     id: int
     usuario_id: int
     disciplina_id: int
@@ -1176,6 +1423,7 @@ class DisciplinaProfessorResponse(BaseModel):
     criado_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 # Forward references para tipos circulares
 AlunoResponse.model_rebuild()

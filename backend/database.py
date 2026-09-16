@@ -1,8 +1,12 @@
+import logging
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
-from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -16,9 +20,9 @@ if not SQLALCHEMY_DATABASE_URL:
 # Criar engine de conexão (PyMySQL)
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    echo=False,  # Set True para ver SQL queries
-    pool_pre_ping=True,  # Verificar conexão antes de usar
-    pool_recycle=3600  # Reciclar conexão após 1 hora
+    echo=False,  
+    pool_pre_ping=True,  
+    pool_recycle=3600,  
 )
 
 # Criar session factory
@@ -26,6 +30,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base para models
 Base = declarative_base()
+
 
 # Dependência para obter sessão do banco
 def get_db():
@@ -39,14 +44,15 @@ def get_db():
     finally:
         db.close()
 
+
 # Função para testar conexão
 def test_connection():
     """Testa a conexão com o banco de dados"""
     try:
         connection = engine.connect()
-        print("✅ Conexão com banco de dados bem-sucedida!")
+        logger.info("Conexão com banco de dados bem-sucedida!")
         connection.close()
         return True
     except Exception as e:
-        print(f"❌ Erro ao conectar ao banco de dados: {e}")
+        logger.error("Erro ao conectar ao banco de dados: %s", e)
         return False

@@ -50,12 +50,7 @@ print("=" * 80)
 
 # Conectar ao MySQL
 connection = pymysql.connect(
-    host=host,
-    port=port,
-    user=user,
-    password=password,
-    database=database,
-    charset='utf8mb4'
+    host=host, port=port, user=user, password=password, database=database, charset="utf8mb4"
 )
 
 cursor = connection.cursor(pymysql.cursors.DictCursor)
@@ -85,23 +80,24 @@ alunos = cursor.fetchall()
 
 print(f"\n📊 Total de alunos encontrados: {len(alunos)}\n")
 
+
 # Função para calcular risco (mesma lógica do backend)
 def calcular_risco_evasao(aluno):
     """Calcula risco de evasão baseado nos dados do aluno"""
     score = 0
     fatores = []
-    
+
     # Frequência (peso máximo: 35 pontos)
-    frequencia = float(aluno['frequencia']) if aluno['frequencia'] else 0
+    frequencia = float(aluno["frequencia"]) if aluno["frequencia"] else 0
     if frequencia < 60:
         score += 35
         fatores.append(f"Frequência crítica ({frequencia}%)")
     elif frequencia < 75:
         score += 25
         fatores.append(f"Frequência abaixo de 75% ({frequencia}%)")
-    
+
     # Média geral (peso máximo: 30 pontos)
-    media = float(aluno['media_geral']) if aluno['media_geral'] else 0
+    media = float(aluno["media_geral"]) if aluno["media_geral"] else 0
     if media < 4.0:
         score += 30
         fatores.append(f"Média muito baixa ({media})")
@@ -111,67 +107,67 @@ def calcular_risco_evasao(aluno):
     elif media < 6.0:
         score += 10
         fatores.append(f"Média regular ({media})")
-    
+
     # Histórico de reprovas (peso máximo: 20 pontos)
-    reprovas = int(aluno['historico_reprovas']) if aluno['historico_reprovas'] else 0
+    reprovas = int(aluno["historico_reprovas"]) if aluno["historico_reprovas"] else 0
     if reprovas > 3:
         score += 20
         fatores.append(f"{reprovas} reprovações")
     elif reprovas > 1:
         score += 10
         fatores.append(f"{reprovas} reprovações")
-    
+
     # Renda familiar (peso máximo: 15 pontos)
-    renda = float(aluno['renda_familiar']) if aluno['renda_familiar'] else 0
+    renda = float(aluno["renda_familiar"]) if aluno["renda_familiar"] else 0
     if renda < 1000:
         score += 15
         fatores.append("Renda familiar baixa")
     elif renda < 2000:
         score += 8
-    
+
     # Trabalha (peso máximo: 15 pontos)
-    if aluno['trabalha']:
-        carga = int(aluno['carga_horaria_trabalho']) if aluno['carga_horaria_trabalho'] else 0
+    if aluno["trabalha"]:
+        carga = int(aluno["carga_horaria_trabalho"]) if aluno["carga_horaria_trabalho"] else 0
         if carga > 40:
             score += 15
             fatores.append(f"Trabalha {carga}h/semana")
         elif carga > 20:
             score += 8
             fatores.append(f"Trabalha {carga}h/semana")
-    
+
     # Tempo de deslocamento (peso máximo: 15 pontos)
-    tempo = int(aluno['tempo_deslocamento']) if aluno['tempo_deslocamento'] else 0
+    tempo = int(aluno["tempo_deslocamento"]) if aluno["tempo_deslocamento"] else 0
     if tempo > 120:
         score += 15
         fatores.append(f"Tempo de deslocamento crítico ({tempo}min)")
     elif tempo > 90:
         score += 8
-    
+
     # Possui computador (peso: 6 pontos)
-    if not aluno['possui_computador']:
+    if not aluno["possui_computador"]:
         score += 6
         fatores.append("Não possui computador")
-    
+
     # Possui internet (peso: 4 pontos)
-    if not aluno['possui_internet']:
+    if not aluno["possui_internet"]:
         score += 4
         fatores.append("Não possui internet")
-    
+
     # Bolsa família (peso: 5 pontos)
-    if aluno['beneficiario_bolsa_familia']:
+    if aluno["beneficiario_bolsa_familia"]:
         score += 5
-    
+
     # Primeiro geração (peso: 5 pontos)
-    if aluno['primeiro_geracao_universidade']:
+    if aluno["primeiro_geracao_universidade"]:
         score += 5
-    
+
     # Auxílio (peso: 5 pontos)
-    if aluno['possui_auxilio']:
+    if aluno["possui_auxilio"]:
         score -= 5  # Reduz risco se tem auxílio
-    
+
     # Limitar a 100 pontos
     score = min(score, 100)
-    
+
     # Determinar nível de risco
     if score <= 30:
         nivel = "BAIXO"
@@ -179,15 +175,18 @@ def calcular_risco_evasao(aluno):
         nivel = "MEDIO"
     else:
         nivel = "ALTO"
-    
+
     # Limitar fatores a 5 principais
     fatores = fatores[:5] if len(fatores) > 5 else fatores
-    
+
     return {
-        'risco_evasao': score,
-        'nivel_risco': nivel,
-        'fatores_principais': ', '.join(fatores) if fatores else 'Nenhum fator crítico identificado'
+        "risco_evasao": score,
+        "nivel_risco": nivel,
+        "fatores_principais": (
+            ", ".join(fatores) if fatores else "Nenhum fator crítico identificado"
+        ),
     }
+
 
 # Processar cada aluno
 print("🔄 Gerando predições...\n")
@@ -196,27 +195,31 @@ predicoes_geradas = 0
 erros = 0
 
 for i, aluno in enumerate(alunos, 1):
-    matricula = aluno['matricula']
-    nome = aluno['nome']
-    
+    matricula = aluno["matricula"]
+    nome = aluno["nome"]
+
     try:
         # Calcular risco
         resultado = calcular_risco_evasao(aluno)
-        
+
         # Verificar se já existe predição
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, risco_evasao, nivel_risco 
             FROM predicoes 
             WHERE aluno_id = %s 
             ORDER BY data_predicao DESC 
             LIMIT 1
-        """, (matricula,))
-        
+        """,
+            (matricula,),
+        )
+
         predicao_existente = cursor.fetchone()
-        
+
         if predicao_existente:
             # Atualizar predição existente
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE predicoes 
                 SET risco_evasao = %s,
                     nivel_risco = %s,
@@ -224,17 +227,20 @@ for i, aluno in enumerate(alunos, 1):
                     modelo_ml_versao = '2.0.0-fallback',
                     data_predicao = NOW()
                 WHERE aluno_id = %s
-            """, (
-                resultado['risco_evasao'],
-                resultado['nivel_risco'],
-                resultado['fatores_principais'],
-                matricula
-            ))
-            
+            """,
+                (
+                    resultado["risco_evasao"],
+                    resultado["nivel_risco"],
+                    resultado["fatores_principais"],
+                    matricula,
+                ),
+            )
+
             acao = "ATUALIZADO"
         else:
             # Inserir nova predição
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO predicoes (
                     aluno_id,
                     risco_evasao,
@@ -243,26 +249,33 @@ for i, aluno in enumerate(alunos, 1):
                     modelo_ml_versao,
                     data_predicao
                 ) VALUES (%s, %s, %s, %s, %s, NOW())
-            """, (
-                matricula,
-                resultado['risco_evasao'],
-                resultado['nivel_risco'],
-                resultado['fatores_principais'],
-                '2.0.0-fallback'
-            ))
-            
+            """,
+                (
+                    matricula,
+                    resultado["risco_evasao"],
+                    resultado["nivel_risco"],
+                    resultado["fatores_principais"],
+                    "2.0.0-fallback",
+                ),
+            )
+
             acao = "CRIADO"
-        
+
         predicoes_geradas += 1
-        
+
         # Imprimir resultado
-        cor_risco = "🟢" if resultado['nivel_risco'] == "BAIXO" else \
-                    "🟡" if resultado['nivel_risco'] == "MEDIO" else "🔴"
-        
-        print(f"{i:3d}. {matricula} - {nome[:30]:30s} | "
-              f"Score: {resultado['risco_evasao']:5.1f} | "
-              f"{cor_risco} {resultado['nivel_risco']:5s} | {acao}")
-        
+        cor_risco = (
+            "🟢"
+            if resultado["nivel_risco"] == "BAIXO"
+            else "🟡" if resultado["nivel_risco"] == "MEDIO" else "🔴"
+        )
+
+        print(
+            f"{i:3d}. {matricula} - {nome[:30]:30s} | "
+            f"Score: {resultado['risco_evasao']:5.1f} | "
+            f"{cor_risco} {resultado['nivel_risco']:5s} | {acao}"
+        )
+
     except Exception as e:
         erros += 1
         print(f"❌ Erro ao processar {matricula}: {e}")

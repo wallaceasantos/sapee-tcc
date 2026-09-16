@@ -12,18 +12,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  User, GraduationCap, Mail, Phone, MapPin, Calendar,
-  DollarSign, Briefcase, BookOpen, AlertCircle, CheckCircle,
-  Save, X, ChevronLeft, Search, Filter, Edit, Trash2,
-  TrendingUp, Percent, History, Home, Heart, Loader2, Users
+  User, GraduationCap, MapPin,
+  DollarSign, Briefcase, AlertCircle,
+  Save, X, Search, Filter, Edit, Trash2,
+  TrendingUp, Home, Heart, Loader2, Users
 } from 'lucide-react';
-import { Link, useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { cn } from '../utils';
-import { formatarTelefone, limparTelefone, validarTelefone } from '../utils/telefone';
+import { formatarTelefone, validarTelefone } from '../utils/telefone';
 import { NivelRisco } from '../types';
 import { RiskBadge, RiskProgressBar, EmptyState, ConfirmationModal } from '../components/ui';
 import { useToast } from '../components/ui/Toast';
-import { useAlunos } from '../hooks/useAlunos';
+import { useAlunos, AlunoAPI } from '../hooks/useAlunos';
 import { useAlunoForm, AlunoFormData } from '../hooks/useAlunoForm';
 import { useAuth } from '../services/AuthContext';
 
@@ -64,11 +64,6 @@ const CURSOS = [
   { id: 25, nome: 'Mestrado em Educação Inclusiva (PROFEI)', modalidade: 'POS_GRADUACAO' },
 ];
 
-const CIDADES = [
-  'Manaus', 'Itacoatiara', 'Manacapuru', 'Parintins',
-  'Coari', 'Tefé', 'Tabatinga', 'São Gabriel da Cachoeira'
-];
-
 const TURNOS = [
   { value: 'MATUTINO', label: 'Matutino' },
   { value: 'VESPERTINO', label: 'Vespertino' },
@@ -92,7 +87,6 @@ const DIFICULDADES = [
 ];
 
 export default function CadastroAlunos() {
-  const navigate = useNavigate();
   const { addToast } = useToast();
   const { can } = useAuth();
   const [searchParams] = useSearchParams();
@@ -120,7 +114,6 @@ export default function CadastroAlunos() {
     handleNumericFocus,
     getNumericValue,
     formatCurrency,
-    parseCurrency,
     resetForm,
     setEditingData,
     handleSubmit,
@@ -202,7 +195,7 @@ export default function CadastroAlunos() {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (aluno: any) => {
+  const handleEdit = (aluno: AlunoAPI) => {
     setEditingData(aluno);
     setIsFormOpen(true);
   };
@@ -407,7 +400,6 @@ export default function CadastroAlunos() {
             handleNumericFocus={handleNumericFocus}
             getNumericValue={getNumericValue}
             formatCurrency={formatCurrency}
-            parseCurrency={parseCurrency}
             handleSubmit={handleSubmit}
             onClose={() => setIsFormOpen(false)}
           />
@@ -435,7 +427,7 @@ export default function CadastroAlunos() {
 
 interface AlunoCardProps {
   key?: string;
-  aluno: any;
+  aluno: AlunoAPI;
   onEdit: () => void;
   onDelete: () => void;
   canEdit: boolean;
@@ -582,7 +574,6 @@ interface FormModalProps {
   handleNumericFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
   getNumericValue: (value: number) => string;
   formatCurrency: (value: number) => string;
-  parseCurrency: (value: string) => number;
   handleSubmit: (e: React.FormEvent) => Promise<void>;
   onClose: () => void;
 }
@@ -598,7 +589,6 @@ function FormModal({
   handleNumericFocus,
   getNumericValue,
   formatCurrency,
-  parseCurrency,
   handleSubmit,
   onClose,
 }: FormModalProps) {

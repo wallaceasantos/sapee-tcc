@@ -1,9 +1,54 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /**
  * API Service - Conexão com Backend
  * SAPEE DEWAS Frontend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Em dev com proxy do Vite, usa URL relativa (mesmo domínio)
+// Em produção, usa VITE_API_URL (ex: https://sapee-api.up.railway.app)
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
+async function request<T>(
+  path: string,
+  options: {
+    method?: string;
+    token?: string;
+    body?: unknown;
+    headers?: Record<string, string>;
+  } = {}
+): Promise<T> {
+  const { method = 'GET', token, body, headers = {} } = options;
+
+  const requestHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...headers,
+  };
+
+  if (token) {
+    requestHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
+  const fetchOptions: RequestInit = {
+    method,
+    headers: requestHeaders,
+  };
+
+  if (body && method !== 'GET') {
+    fetchOptions.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, fetchOptions);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.detail || `Erro ${response.status}: ${response.statusText}`
+    );
+  }
+
+  return response.json();
+}
 
 // Tipos
 export interface LoginRequest {
@@ -33,149 +78,49 @@ export interface User {
 
 // Funções de API
 export const api = {
-  /**
-   * Fazer login
-   */
   auth: {
     login: async (data: LoginRequest): Promise<LoginResponse> => {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      return request<LoginResponse>('/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+        body: data,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Erro ao fazer login');
-      }
-
-      return response.json();
     },
 
-    /**
-     * Obter usuário atual
-     */
     me: async (token: string): Promise<User> => {
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Erro /auth/me:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-        });
-        throw new Error(errorData.detail || `Erro ${response.status}: ${response.statusText}`);
-      }
-
-      return response.json();
+      return request<User>('/auth/me', { token });
     },
 
-    /**
-     * Trocar senha
-     */
     trocarSenha: async (token: string, senhaAtual: string, senhaNova: string): Promise<any> => {
-      const response = await fetch(`${API_BASE_URL}/auth/trocar-senha`, {
+      return request('/auth/trocar-senha', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          senha_atual: senhaAtual,
-          senha_nova: senhaNova,
-        }),
+        token,
+        body: { senha_atual: senhaAtual, senha_nova: senhaNova },
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Erro ao trocar senha');
-      }
-
-      return response.json();
     },
+
+    refresh: async (refreshToken: string): Promise<LoginResponse> => {
+      return request<LoginResponse>('/auth/refresh', {
+        method: 'POST',
+        body: { refresh_token: refreshToken },
+      });
+    },
+
   },
 
-  /**
-   * Alunos
-   */
   alunos: {
-    /**
-     * Buscar alunos por nome ou matrícula
-     */
     buscar: async (token: string, q: string = '', limit: number = 20): Promise<any[]> => {
       const params = new URLSearchParams();
       if (q) params.set('q', q);
       params.set('limit', limit.toString());
-
-      const response = await fetch(
-        `${API_BASE_URL}/alunos/buscar?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Erro ${response.status}: ${response.statusText}`);
-      }
-
-      return response.json();
+      return request(`/alunos/buscar?${params.toString()}`, { token });
     },
 
-    /**
-     * Listar alunos em risco sem intervenção ativa
-     */
     listEmRisco: async (token: string): Promise<any> => {
-      const response = await fetch(
-        `${API_BASE_URL}/alunos/em-risco`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Erro ${response.status}: ${response.statusText}`);
-      }
-
-      return response.json();
+      return request('/alunos/em-risco', { token });
     },
 
-    /**
-     * Listar alunos em monitoramento preventivo (risco MÉDIO)
-     */
     listMonitoramento: async (token: string): Promise<any> => {
-      const response = await fetch(
-        `${API_BASE_URL}/alunos/monitoramento`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Erro ${response.status}: ${response.statusText}`);
-      }
-
-      return response.json();
+      return request('/alunos/monitoramento', { token });
     },
 
     /**
@@ -352,18 +297,7 @@ export const api = {
    */
   dashboard: {
     stats: async (token: string): Promise<any> => {
-      const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao obter estatísticas');
-      }
-
-      return response.json();
+      return request('/dashboard/stats', { token });
     },
   },
 
@@ -372,20 +306,7 @@ export const api = {
    */
   usuarios: {
     list: async (token: string, skip = 0, limit = 100): Promise<any[]> => {
-      const response = await fetch(
-        `${API_BASE_URL}/usuarios?skip=${skip}&limit=${limit}`,
-        {
-          method: 'GET',
-          headers: { 'Authorization': `Bearer ${token}` },
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Erro ao listar usuários');
-      }
-
-      return response.json();
+      return request(`/usuarios?skip=${skip}&limit=${limit}`, { token });
     },
 
     create: async (token: string, data: {
@@ -669,7 +590,7 @@ export const api = {
       params.set('skip', skip.toString());
       params.set('limit', limit.toString());
 
-      if (status) params.set('status', status);
+      if (status) params.set('status_filter', status);
       if (curso_id !== undefined) params.set('curso_id', curso_id.toString());
 
       const response = await fetch(
@@ -699,7 +620,7 @@ export const api = {
       status?: string
     ): Promise<any[]> => {
       const params = new URLSearchParams();
-      if (status) params.set('status', status);
+      if (status) params.set('status_filter', status);
 
       const response = await fetch(
         `${API_BASE_URL}/alunos/${matricula}/intervencoes?${params.toString()}`,
@@ -1702,6 +1623,70 @@ export const api = {
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
       if (!response.ok) throw new Error('Erro ao obter alertas de demora');
+      return response.json();
+    },
+  },
+
+  /**
+   * Tokens de Questionário
+   */
+  tokens: {
+    listar: async (token: string): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/tokens/questionario/listar`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Erro ao listar tokens');
+      return response.json();
+    },
+
+    gerar: async (token: string, matricula: string, horas_validade: number = 24): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/tokens/questionario/gerar`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aluno_matricula: matricula, horas_validade })
+      });
+      if (!response.ok) throw new Error('Erro ao gerar token');
+      return response.json();
+    },
+
+    enviar: async (token: string, data: {
+      token: string;
+      aluno_matricula: string;
+      canal: 'EMAIL' | 'WHATSAPP';
+    }): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/tokens/questionario/enviar`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Erro ao enviar token');
+      return response.json();
+    },
+
+    enviarEmMassa: async (token: string, data: {
+      alunos_matriculas: string[];
+      canal: 'EMAIL' | 'WHATSAPP';
+      horas_validade?: number;
+    }): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/tokens/questionario/enviar-em-massa`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alunos_matriculas: data.alunos_matriculas,
+          canal: data.canal,
+          horas_validade: data.horas_validade || 24
+        })
+      });
+      if (!response.ok) throw new Error('Erro ao enviar tokens em massa');
+      return response.json();
+    },
+
+    limpar: async (token: string, dias: number = 0): Promise<any> => {
+      const response = await fetch(`${API_BASE_URL}/tokens/questionario/limpar-expirados?dias=${dias}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Erro ao limpar tokens');
       return response.json();
     },
   },

@@ -7,21 +7,21 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, User, CheckSquare, Square, Download, ClipboardList, X, Users, AlertTriangle, TrendingUp, Edit, Trash2, Eye, Zap, Plus, MoreHorizontal } from 'lucide-react';
+import { Search, LayoutGrid, List, CheckSquare, Square, ClipboardList, X, Users, AlertTriangle, TrendingUp, Edit, Trash2, Eye, Zap, Plus } from 'lucide-react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { NivelRisco } from '../types';
 import { cn } from '../utils';
 import { StatCard, RiskBadge, RiskProgressBar, AlunoCardSkeleton, EmptyState, ConfirmationModal } from '../components/ui';
 import { EdicaoRapidaModal } from '../components/EdicaoRapidaModal';
-import { useAlunos } from '../hooks/useAlunos';
+import { useAlunos, AlunoAPI } from '../hooks/useAlunos';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../services/AuthContext';
 
 export default function Alunos() {
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   const [selectedAlunos, setSelectedAlunos] = React.useState<string[]>([]);
@@ -31,7 +31,7 @@ export default function Alunos() {
   
   // Estado para edição rápida
   const [edicaoRapidaOpen, setEdicaoRapidaOpen] = useState(false);
-  const [alunoParaEditar, setAlunoParaEditar] = useState<any>(null);
+  const [alunoParaEditar, setAlunoParaEditar] = useState<AlunoAPI | null>(null);
 
   const busca = searchParams.get('busca') || '';
   const curso = searchParams.get('curso') || '';
@@ -101,7 +101,7 @@ export default function Alunos() {
     });
   };
   
-  const handleEdicaoRapida = (aluno: any) => {
+  const handleEdicaoRapida = (aluno: AlunoAPI) => {
     setAlunoParaEditar(aluno);
     setEdicaoRapidaOpen(true);
   };
@@ -544,7 +544,7 @@ export default function Alunos() {
 // Componente Card de Aluno
 interface AlunoCardProps {
   key?: string;
-  aluno: any;
+  aluno: AlunoAPI;
   isSelected: boolean;
   onSelect: () => void;
   onEdit: () => void;

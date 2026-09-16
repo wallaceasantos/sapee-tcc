@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Users, AlertTriangle, CheckCircle, TrendingUp, ArrowRight, ClipboardList, Clock, Calendar, BookOpen, Award, Target, Zap } from 'lucide-react';
+import { Users, AlertTriangle, CheckCircle, TrendingUp, ArrowRight, ClipboardList, Clock, Award, Target, Zap } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { NivelRisco } from '../types';
-import { cn } from '../utils';
-import { StatCard, RiskBadge, DashboardSkeleton } from '../components/ui';
+import { StatCard, DashboardSkeleton } from '../components/ui';
 import { useToast } from '../components/ui/Toast';
-import { useDashboardStats, AlunoRisco } from '../hooks/useDashboardStats';
+import { useDashboardStats } from '../hooks/useDashboardStats';
 import { useAuth } from '../services/AuthContext';
 import api from '../services/api';
 
@@ -16,8 +14,8 @@ export default function Dashboard() {
   const { addToast } = useToast();
   const { token } = useAuth();
   const { stats, riscoPorCurso, topAlunosRisco, isLoading: statsLoading, error } = useDashboardStats();
-  const [eficaciaStats, setEficaciaStats] = useState<any>(null);
-  const [faltasStats, setFaltasStats] = useState<any>(null);
+  const [eficaciaStats, setEficaciaStats] = useState<Record<string, number> | null>(null);
+  const [faltasStats, setFaltasStats] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
     // Carregar stats de eficácia
@@ -53,7 +51,7 @@ export default function Dashboard() {
       }
     };
     loadFaltas();
-  }, [token]);
+  }, [token, addToast]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -68,7 +66,7 @@ export default function Dashboard() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [statsLoading, stats]);
+  }, [statsLoading, stats, addToast]);
 
   const pieData = stats ? [
     { name: 'Muito Alto', value: stats.risco_muito_alto || 0, color: '#a855f7' },

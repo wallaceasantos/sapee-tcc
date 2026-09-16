@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { History, Search, Filter, Download, User, Activity, Clock, Shield } from 'lucide-react';
+import { Search, Download, User, Clock, Shield } from 'lucide-react';
 import { getAuditLogs, AuditLog, logAction } from '../services/logService';
 import { cn } from '../utils';
 
@@ -9,14 +9,14 @@ export default function AuditLogs() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
 
-  useEffect(() => {
-    carregarLogs();
-  }, []);
-
-  const carregarLogs = async () => {
+  const carregarLogs = useCallback(async () => {
     const logsData = await getAuditLogs();
     setLogs(logsData);
-  };
+  }, []);
+
+  useEffect(() => {
+    carregarLogs();
+  }, [carregarLogs]);
 
   const exportToCSV = () => {
     const headers = 'Data;Usuario;Acao;Detalhes\n';

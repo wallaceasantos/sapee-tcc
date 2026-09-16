@@ -1,22 +1,33 @@
-/**
- * API Client - Axios Instance
- * SAPEE DEWAS - Configuração do Axios para requisições HTTP
- */
-
 import axios from 'axios';
+import { storage } from '../utils/storage';
 
-// Criar instância do axios com configuração base
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL || '',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para adicionar token de autenticação
+let isRefreshing = false;
+let pendingQueue: Array<{
+  resolve: (value: unknown) => void;
+  reject: (reason?: unknown) => void;
+}> = [];
+
+function processQueue(error: unknown) {
+  pendingQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(undefined);
+    }
+  });
+  pendingQueue = [];
+}
+
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('sapee_token');
+    const token = storage.token.get();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,15 +38,59 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para lidar com erros de resposta
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expirado, fazer logout
-      localStorage.removeItem('sapee_token');
-      window.location.href = '/login';
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      const refreshToken = storage.refreshToken.get();
+      if (!refreshToken) {
+        storage.clearAll();
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          pendingQueue.push({ resolve, reject });
+        })
+          .then(() => api(originalRequest))
+          .catch(() => Promise.reject(error));
+      }
+
+      isRefreshing = true;
+
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL || ''}/auth/refresh`,
+          { refresh_token: refreshToken },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+
+        const { access_token, refresh_token: newRefreshToken } = response.data;
+
+        storage.token.set(access_token);
+        if (newRefreshToken) {
+          storage.refreshToken.set(newRefreshToken);
+        }
+
+        processQueue(null);
+
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError);
+        storage.clearAll();
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   }
 );

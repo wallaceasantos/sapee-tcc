@@ -3,7 +3,7 @@
  * SAPEE DEWAS - Sistema de Alerta de Predição de Evasão Escolar
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   TrendingUp, 
   CheckCircle, 
@@ -12,9 +12,7 @@ import {
   Users, 
   Calendar,
   Download,
-  Filter,
   ArrowUpRight,
-  ArrowDownRight,
   Target,
   Award,
   FileText,
@@ -26,7 +24,6 @@ import { motion } from 'motion/react';
 import { cn } from '../utils';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../services/AuthContext';
-import api from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { exportToCSV, exportToExcel, exportReportToPDF, printReport } from '../utils/export';
 
@@ -101,11 +98,7 @@ export default function RelatorioEficacia() {
   const [periodo, setPeriodo] = useState<'6m' | '1a' | '2a'>('6m');
   const [showExportMenu, setShowExportMenu] = useState(false);
 
-  useEffect(() => {
-    loadRelatorios();
-  }, [periodo]);
-
-  const loadRelatorios = async () => {
+  const loadRelatorios = useCallback(async () => {
     if (!token) return;
     
     setIsLoading(true);
@@ -143,16 +136,21 @@ export default function RelatorioEficacia() {
         const recuperados = await recuperadosResponse.json();
         setRecuperadosData(recuperados);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao carregar relatórios';
       addToast({
         type: 'error',
         title: 'Erro ao carregar relatórios',
-        message: error.message
+        message: mensagem
       });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, periodo, addToast]);
+
+  useEffect(() => {
+    loadRelatorios();
+  }, [loadRelatorios]);
 
   // Funções de Exportação
   const handleExportCSV = () => {
@@ -475,11 +473,14 @@ export default function RelatorioEficacia() {
                       return (
                         <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg">
                           <p className="font-bold text-white text-sm mb-2">{label}</p>
-                          {payload.map((entry: any, index: number) => (
-                            <p key={index} className="text-sm font-medium text-slate-300">
-                              {entry.name}: <span className="text-white font-bold">{entry.value}</span>
-                            </p>
-                          ))}
+                          {payload.map((entry, index) => {
+                            const item = entry as { name: string; value: number };
+                            return (
+                              <p key={index} className="text-sm font-medium text-slate-300">
+                                {item.name}: <span className="text-white font-bold">{item.value}</span>
+                              </p>
+                            );
+                          })}
                         </div>
                       );
                     }

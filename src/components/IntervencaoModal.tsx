@@ -6,6 +6,17 @@ import { cn } from '../utils';
 import { useAuth } from '../services/AuthContext';
 import api from '../services/api';
 
+interface AlunoSearchResult {
+  matricula: string;
+  nome: string;
+  curso?: string;
+  periodo?: number;
+  media_geral?: number;
+  frequencia?: number;
+  risco_evasao?: number;
+  nivel_risco?: string;
+}
+
 interface IntervencaoModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,7 +24,7 @@ interface IntervencaoModalProps {
   alunoNome: string;
   isSaving?: boolean;
   matricula?: string;
-  onAlunoSelecionado?: (aluno: any) => void;
+  onAlunoSelecionado?: (aluno: AlunoSearchResult) => void;
   initialValues?: {
     tipo?: string;
     descricao?: string;
@@ -35,9 +46,9 @@ export default function IntervencaoModal({
   const { token } = useAuth();
   const [matricula, setMatricula] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<AlunoSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [alunoSelecionado, setAlunoSelecionado] = useState<any>(null);
+  const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoSearchResult | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Inicializar com valores das props
@@ -99,7 +110,7 @@ export default function IntervencaoModal({
     };
   }, [searchTerm, token, isOpen]);
 
-  const handleSelecionarAluno = (aluno: any) => {
+  const handleSelecionarAluno = (aluno: AlunoSearchResult) => {
     setAlunoSelecionado(aluno);
     setSearchTerm(`${aluno.nome} (${aluno.matricula})`);
     setShowDropdown(false);
@@ -134,7 +145,7 @@ export default function IntervencaoModal({
       prioridade,
       data_intervencao: new Date().toISOString().split('T')[0],
       matricula: matriculaFinal
-    } as any);
+    } as IntervencaoCreate);
 
     // Reset fields
     setMatricula('');
@@ -254,9 +265,9 @@ export default function IntervencaoModal({
                         <p className="text-xs text-gray-500 dark:text-slate-400">Média</p>
                         <p className={cn(
                           "font-bold",
-                          alunoSelecionado.media_geral >= 7 ? "text-emerald-600" :
-                          alunoSelecionado.media_geral >= 5 ? "text-amber-600" : "text-red-500"
-                        )}>{alunoSelecionado.media_geral}</p>
+                          (alunoSelecionado.media_geral ?? 0) >= 7 ? "text-emerald-600" :
+                          (alunoSelecionado.media_geral ?? 0) >= 5 ? "text-amber-600" : "text-red-500"
+                        )}>{alunoSelecionado.media_geral ?? 0}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -265,9 +276,9 @@ export default function IntervencaoModal({
                         <p className="text-xs text-gray-500 dark:text-slate-400">Frequência</p>
                         <p className={cn(
                           "font-bold",
-                          alunoSelecionado.frequencia >= 85 ? "text-emerald-600" :
-                          alunoSelecionado.frequencia >= 75 ? "text-amber-600" : "text-red-500"
-                        )}>{alunoSelecionado.frequencia}%</p>
+                          (alunoSelecionado.frequencia ?? 0) >= 85 ? "text-emerald-600" :
+                          (alunoSelecionado.frequencia ?? 0) >= 75 ? "text-amber-600" : "text-red-500"
+                        )}>{alunoSelecionado.frequencia ?? 0}%</p>
                       </div>
                     </div>
                   </div>
@@ -278,13 +289,13 @@ export default function IntervencaoModal({
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div
-                            className={cn(
-                              "h-full rounded-full",
-                              alunoSelecionado.risco_evasao >= 80 ? "bg-purple-600" :
-                              alunoSelecionado.risco_evasao >= 60 ? "bg-red-500" :
-                              alunoSelecionado.risco_evasao >= 30 ? "bg-amber-500" : "bg-emerald-500"
-                            )}
-                            style={{ width: `${alunoSelecionado.risco_evasao}%` }}
+                          className={cn(
+                            "h-full rounded-full",
+                            (alunoSelecionado.risco_evasao ?? 0) >= 80 ? "bg-purple-600" :
+                            (alunoSelecionado.risco_evasao ?? 0) >= 60 ? "bg-red-500" :
+                            (alunoSelecionado.risco_evasao ?? 0) >= 30 ? "bg-amber-500" : "bg-emerald-500"
+                          )}
+                          style={{ width: `${alunoSelecionado.risco_evasao ?? 0}%` }}
                           />
                         </div>
                         <span className={cn(

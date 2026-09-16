@@ -9,8 +9,8 @@
  * - Estatísticas de envio
  */
 
-import React, { useState, useEffect } from 'react';
-import { MessageSquare, Plus, Filter, Send, Clock, AlertTriangle, CheckCircle, XCircle, X, BookOpen, Phone, Mail, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MessageSquare, Plus, Filter, Send, X, BookOpen, Phone, Mail, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../utils';
 import { formatarTelefone, validarTelefone } from '../utils/telefone';
@@ -39,6 +39,15 @@ interface Comunicacao {
   criado_at?: string;
 }
 
+interface StatsComunicacao {
+  total: number;
+  pendentes: number;
+  falhas: number;
+  por_canal?: Record<string, number>;
+  por_status?: Record<string, number>;
+  lembretes_hoje: number;
+}
+
 const TIPOS_COMUNICACAO = [
   { value: 'FALTAS', label: 'Faltas', icon: '📋' },
   { value: 'RISCO', label: 'Risco de Evasão', icon: '⚠️' },
@@ -65,11 +74,11 @@ const STATUS_OPTIONS = [
 ];
 
 export default function CentralComunicacoes() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const { addToast } = useToast();
 
   const [comunicacoes, setComunicacoes] = useState<Comunicacao[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<StatsComunicacao | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
@@ -82,7 +91,7 @@ export default function CentralComunicacoes() {
   // Form
   const [buscaAluno, setBuscaAluno] = useState('');
   const [alunoSelecionado, setAlunoSelecionado] = useState<{ matricula: string; nome: string } | null>(null);
-  const [alunosFiltrados, setAlunosFiltrados] = useState<any[]>([]);
+  const [alunosFiltrados, setAlunosFiltrados] = useState<Array<{ matricula: string; nome: string; nome_responsavel_1?: string; telefone_responsavel_1?: string; email_responsavel_1?: string }>>([]);
   const [loadingBusca, setLoadingBusca] = useState(false);
   const [tipoComunicacao, setTipoComunicacao] = useState('MANUAL');
   const [canal, setCanal] = useState('SISTEMA');
@@ -95,35 +104,29 @@ export default function CentralComunicacoes() {
   const [dataAgendada, setDataAgendada] = useState('');
 
   // Templates
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<Array<{ id: number; nome: string; conteudo: string; canal: string; tipo_comunicacao: string }>>([]);
   const [showTemplates, setShowTemplates] = useState(false);
   const [mensagemSelecionada, setMensagemSelecionada] = useState<Comunicacao | null>(null);
 
-  useEffect(() => {
-    loadComunicacoes();
-    loadStats();
-    loadTemplates();
-  }, [filtroTipo, filtroCanal, filtroStatus, filtroLembretes]);
-
-  const loadComunicacoes = async () => {
+  const loadComunicacoes = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const params: any = { limit: 200 };
+      const params: Record<string, string | number | boolean | undefined> = { limit: 200 };
       if (filtroTipo !== 'todos') params.tipo = filtroTipo;
       if (filtroCanal !== 'todos') params.canal = filtroCanal;
       if (filtroStatus !== 'todos') params.status = filtroStatus;
       if (filtroLembretes !== undefined) params.eh_lembrete = filtroLembretes;
       const data = await api.comunicacoes.list(token, params);
       setComunicacoes(data);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao carregar comunicações' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, filtroTipo, filtroCanal, filtroStatus, filtroLembretes, addToast]);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     if (!token) return;
     try {
       const data = await api.comunicacoes.stats(token);
@@ -131,9 +134,9 @@ export default function CentralComunicacoes() {
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
     }
-  };
+  }, [token]);
 
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     if (!token) return;
     try {
       const data = await api.comunicacoes.templates.list(token);
@@ -141,7 +144,13 @@ export default function CentralComunicacoes() {
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    loadComunicacoes();
+    loadStats();
+    loadTemplates();
+  }, [filtroTipo, filtroCanal, filtroStatus, filtroLembretes, loadComunicacoes, loadStats, loadTemplates]);
 
   const handleBuscaAluno = async () => {
     if (!buscaAluno.trim() || buscaAluno.length < 2) return;
@@ -150,14 +159,14 @@ export default function CentralComunicacoes() {
     try {
       const data = await api.alunos.buscar(token, buscaAluno, 10);
       setAlunosFiltrados(data);
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro na busca' });
     } finally {
       setLoadingBusca(false);
     }
   };
 
-  const handleSelectAluno = (aluno: any) => {
+  const handleSelectAluno = (aluno: { matricula: string; nome: string; nome_responsavel_1?: string; telefone_responsavel_1?: string; email_responsavel_1?: string }) => {
     setAlunoSelecionado({ matricula: aluno.matricula, nome: aluno.nome });
     setBuscaAluno(`${aluno.nome} (${aluno.matricula})`);
     setAlunosFiltrados([]);
@@ -174,7 +183,7 @@ export default function CentralComunicacoes() {
     }
   };
 
-  const handleSelectTemplate = async (template: any) => {
+  const handleSelectTemplate = async (template: { id: number; nome: string; conteudo: string; canal: string; tipo_comunicacao: string }) => {
     if (!alunoSelecionado) {
       addToast({ type: 'warning', title: 'Aluno não selecionado', message: 'Selecione um aluno primeiro para usar templates.' });
       return;
@@ -262,8 +271,8 @@ export default function CentralComunicacoes() {
       resetForm();
       loadComunicacoes();
       loadStats();
-    } catch (error: any) {
-      addToast({ type: 'error', title: 'Erro', message: error.message });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erro', message: error instanceof Error ? error.message : 'Erro ao enviar comunicação' });
     }
   };
 
